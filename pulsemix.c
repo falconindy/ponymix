@@ -56,7 +56,7 @@ struct pulseaudio_t {
 	pa_mainloop_api *mainloop_api;
 	enum connectstate state;
 
-	struct sink_t *sinks;
+	struct sink_t *sink;
 };
 
 int xstrtol(const char *str, long *out)
@@ -86,7 +86,7 @@ static int pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 
 static void sink_get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%s: %d%%\n", pulse->sinks->name, pulse->sinks->volume_percent);
+	printf("%s: %d%%\n", pulse->sink->name, pulse->sink->volume_percent);
 }
 
 static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
@@ -144,7 +144,7 @@ static void print_sink(struct sink_t *sink)
 
 static void print_sinks(struct pulseaudio_t *pulse)
 {
-	struct sink_t *sink = pulse->sinks;
+	struct sink_t *sink = pulse->sink;
 
 	while (sink) {
 		print_sink(sink);
@@ -170,12 +170,12 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 
 	sink = pulse_sink_new(i);
 
-	if (pulse->sinks == NULL)
-		pulse->sinks = sink;
+	if (pulse->sink == NULL)
+		pulse->sink = sink;
 	else {
-		s = pulse->sinks;
+		s = pulse->sink;
 		s->next_sink = sink;
-		pulse->sinks = sink;
+		pulse->sink = sink;
 	}
 }
 
@@ -230,7 +230,7 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 	pa_operation *op;
 
 	get_sink_by_name(pulse, sinkname);
-	if (pulse->sinks == NULL) {
+	if (pulse->sink == NULL) {
 		warnx("failed to get sink by name\n");
 		return;
 	}
@@ -242,15 +242,15 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
 {
-	struct sink_t *sink = pulse->sinks;
+	struct sink_t *sink = pulse->sink;
 
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
 
 	while (sink) {
-		sink = pulse->sinks->next_sink;
-		free(pulse->sinks);
-		pulse->sinks = sink;
+		sink = pulse->sink->next_sink;
+		free(pulse->sink);
+		pulse->sink = sink;
 	}
 }
 
@@ -261,7 +261,7 @@ static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
 	pulse->mainloop_api = pa_mainloop_get_api(pulse->mainloop);
 	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
 	pulse->state = STATE_CONNECTING;
-	pulse->sinks = NULL;
+	pulse->sink = NULL;
 
 	/* set state callback for connection */
 	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 		} else
 			get_default_sink(&pulse);
 
-		if(pulse.sinks == NULL)
+		if(pulse.sink == NULL)
 			errx(EXIT_FAILURE, "sink not found: %s", sink ? sink : "default");
 
 		switch (verb) {
@@ -404,22 +404,22 @@ int main(int argc, char *argv[])
 			sink_get_volume(&pulse);
 			break;
 		case ACTION_SETVOL:
-			sink_set_volume(&pulse, pulse.sinks, value.l);
+			sink_set_volume(&pulse, pulse.sink, value.l);
 			break;
 		case ACTION_INCREASE:
-			sink_set_volume(&pulse, pulse.sinks, pulse.sinks->volume_percent + value.l);
+			sink_set_volume(&pulse, pulse.sink, pulse.sink->volume_percent + value.l);
 			break;
 		case ACTION_DECREASE:
-			sink_set_volume(&pulse, pulse.sinks, pulse.sinks->volume_percent - value.l);
+			sink_set_volume(&pulse, pulse.sink, pulse.sink->volume_percent - value.l);
 			break;
 		case ACTION_MUTE:
-			sink_mute(&pulse, pulse.sinks);
+			sink_mute(&pulse, pulse.sink);
 			break;
 		case ACTION_UNMUTE:
-			sink_unmute(&pulse, pulse.sinks);
+			sink_unmute(&pulse, pulse.sink);
 			break;
 		case ACTION_TOGGLE:
-			sink_set_mute(&pulse, pulse.sinks, !pulse.sinks->mute);
+			sink_set_mute(&pulse, pulse.sink, !pulse.sink->mute);
 			break;
 		case ACTION_SETSINK:
 			set_default_sink(&pulse, value.c);

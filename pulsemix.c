@@ -109,7 +109,7 @@ static int pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 
 static void sink_get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%s: %d%%\n", pulse->sink->name, pulse->sink->volume_percent);
+	printf("%d%%\n", pulse->sink->volume_percent);
 }
 
 static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
@@ -175,7 +175,8 @@ static void print_sinks(struct pulseaudio_t *pulse)
 	}
 }
 
-static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
+static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
+		void *raw)
 {
 	const char **sink_name = (const char **)raw;
 
@@ -241,7 +242,8 @@ static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name)
 static void get_default_sink(struct pulseaudio_t *pulse)
 {
 	const char *sink_name;
-	pa_operation *op = pa_context_get_server_info(pulse->cxt, server_info_cb, &sink_name);
+	pa_operation *op = pa_context_get_server_info(pulse->cxt, server_info_cb,
+			&sink_name);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 
@@ -261,6 +263,7 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 	op = pa_context_set_default_sink(pulse->cxt, sinkname, NULL, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
+
 }
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
@@ -364,8 +367,7 @@ int main(int argc, char *argv[])
 	};
 
 	for (;;) {
-		int optidx;
-		int opt = getopt_long(argc, argv, "hs:", opts, &optidx);
+		int opt = getopt_long(argc, argv, "hs:", opts, NULL);
 		if (opt == -1)
 			break;
 

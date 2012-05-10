@@ -242,9 +242,16 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
 {
+	struct sink_t *sink = pulse->sinks;
+
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
-	free(pulse->sinks);
+
+	while (sink) {
+		sink = pulse->sinks->next_sink;
+		free(pulse->sinks);
+		pulse->sinks = sink;
+	}
 }
 
 static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)

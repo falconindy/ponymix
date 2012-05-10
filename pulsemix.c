@@ -29,7 +29,6 @@
 #include <err.h>
 #include <getopt.h>
 #include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +68,7 @@ struct sink_t {
 	const char *desc;
 	pa_cvolume volume;
 	int volume_percent;
-	bool mute;
+	int mute;
 
 	struct sink_t *next_sink;
 };

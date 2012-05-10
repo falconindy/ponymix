@@ -115,7 +115,7 @@ static void sink_get_volume(struct pulseaudio_t *pulse)
 static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
 {
 	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
-			(pa_volume_t)(int)fmax(((double)v * PA_VOLUME_NORM / 100), 0));
+			(int)fmax((double)v * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
 			sink->idx, vol, NULL, NULL);
 	pulse_async_wait(pulse, op);
@@ -152,7 +152,7 @@ static struct sink_t *pulse_sink_new(const pa_sink_info *info)
 	sink->volume.channels = info->volume.channels;
 
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100.)
+	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
 	sink->mute = info->mute;
 

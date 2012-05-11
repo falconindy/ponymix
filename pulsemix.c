@@ -359,6 +359,8 @@ enum action string_to_verb(const char *string)
 		return ACTION_UNMUTE;
 	else if (strcmp(string, "toggle") == 0)
 		return ACTION_TOGGLE;
+	else if (strcmp(string, "set-sink") == 0)
+		return ACTION_SETSINK;
 
 	return ACTION_INVALID;
 }

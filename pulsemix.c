@@ -86,6 +86,7 @@ struct pulseaudio_t {
 	pa_mainloop *mainloop;
 	pa_mainloop_api *mainloop_api;
 	enum connectstate state;
+	int success;
 
 	struct sink_t *sink;
 };
@@ -105,14 +106,16 @@ int xstrtol(const char *str, long *out)
 	return 0;
 }
 
-static int pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
+static void success_cb(pa_context UNUSED *c, int success, void *raw)
 {
-	int r = 0;
+	struct pulseaudio_t *pulse = raw;
+	pulse->success = success;
+}
 
+static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
+{
 	while (pa_operation_get_state(op) == PA_OPERATION_RUNNING)
-		pa_mainloop_iterate(pulse->mainloop, 1, &r);
-	
-	return r;
+		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
 static void sink_get_volume(struct pulseaudio_t *pulse)
@@ -122,15 +125,18 @@ static void sink_get_volume(struct pulseaudio_t *pulse)
 
 static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
 {
-	int r;
 	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
-			(int)fmax((double)v * PA_VOLUME_NORM / 100, 0));
+			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
-			sink->idx, vol, NULL, NULL);
-	r = pulse_async_wait(pulse, op);
+			sink->idx, vol, success_cb, pulse);
+	pulse_async_wait(pulse, op);
 
-	if (r == 0)
+	if (pulse->success)
 		printf("%ld\n", v);
+	else {
+		int err = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to set volume: %s\n", pa_strerror(err));
+	}
 
 	pa_operation_unref(op);
 }
@@ -269,9 +275,15 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 		warnx("failed to get sink by name\n");
 		return;
 	}
- 
-	op = pa_context_set_default_sink(pulse->cxt, sinkname, NULL, pulse);
+
+	op = pa_context_set_default_sink(pulse->cxt, sinkname, success_cb, pulse);
 	pulse_async_wait(pulse, op);
+
+	if (!pulse->success) {
+		int err = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to set default sink to %s: %s\n", sinkname, pa_strerror(err));
+	}
+
 	pa_operation_unref(op);
 }
 

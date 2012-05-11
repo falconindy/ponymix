@@ -1,4 +1,4 @@
-CFLAGS := -Wall -Wextra -pedantic -O2 $(CFLAGS)
+CFLAGS := -Wall -Wextra -pedantic -O2 -g $(CFLAGS)
 LDFLAGS := -lpulse -lm $(LDFLAGS)
 
 pulsemix: pulsemix.o

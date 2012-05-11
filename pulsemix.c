@@ -364,6 +364,7 @@ int main(int argc, char *argv[])
 	static const struct option opts[] = {
 		{ "help", no_argument, 0, 'h' },
 		{ "sink", required_argument, 0, 's' },
+		{ 0, 0, 0, 0 },
 	};
 
 	for (;;) {

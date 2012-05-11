@@ -107,7 +107,7 @@ int xstrtol(const char *str, long *out)
 
 static int pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 {
-	int r;
+	int r = 0;
 
 	while (pa_operation_get_state(op) == PA_OPERATION_RUNNING)
 		pa_mainloop_iterate(pulse->mainloop, 1, &r);
@@ -117,16 +117,20 @@ static int pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 
 static void sink_get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%d%%\n", pulse->sink->volume_percent);
+	printf("%d\n", pulse->sink->volume_percent);
 }
 
 static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
 {
+	int r;
 	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
 			(int)fmax((double)v * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
 			sink->idx, vol, NULL, NULL);
-	pulse_async_wait(pulse, op);
+	r = pulse_async_wait(pulse, op);
+
+	if (r == 0)
+		printf("%ld\n", v);
 
 	pa_operation_unref(op);
 }

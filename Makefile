@@ -4,7 +4,7 @@ LDFLAGS := -lpulse -lm $(LDFLAGS)
 pulsemix: pulsemix.o
 
 install: pulsemix
-	mkdir $(DESTDIR)/usr/bin
+	mkdir -p $(DESTDIR)/usr/bin
 	install -m755 pulsemix $(DESTDIR)/usr/bin/pulsemix
 
 clean:

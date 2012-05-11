@@ -123,7 +123,7 @@ static void sink_get_volume(struct pulseaudio_t *pulse)
 	printf("%d\n", pulse->sink->volume_percent);
 }
 
-static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
+static int sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
 {
 	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
@@ -139,25 +139,34 @@ static void sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, lon
 	}
 
 	pa_operation_unref(op);
+
+	return !pulse->success;
 }
 
-static void sink_set_mute(struct pulseaudio_t *pulse, struct sink_t *sink, int mute)
+static int sink_set_mute(struct pulseaudio_t *pulse, struct sink_t *sink, int mute)
 {
 	pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, sink->idx,
-			mute, NULL, NULL);
+			mute, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
+	if (!pulse->success) {
+		int err = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to mute sink: %s\n", pa_strerror(err));
+	}
+
 	pa_operation_unref(op);
+
+	return !pulse->success;
 }
 
-static void sink_unmute(struct pulseaudio_t *pulse, struct sink_t *sink)
+static int sink_unmute(struct pulseaudio_t *pulse, struct sink_t *sink)
 {
-	sink_set_mute(pulse, sink, 0);
+	return sink_set_mute(pulse, sink, 0);
 }
 
-static void sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
+static int sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
 {
-	sink_set_mute(pulse, sink, 1);
+	return sink_set_mute(pulse, sink, 1);
 }
 
 static struct sink_t *sink_new(const pa_sink_info *info)
@@ -266,14 +275,14 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	get_sink_by_name(pulse, sink_name);
 }
 
-static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
+static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 {
 	pa_operation *op;
 
 	get_sink_by_name(pulse, sinkname);
 	if (pulse->sink == NULL) {
 		warnx("failed to get sink by name\n");
-		return;
+		return 1;
 	}
 
 	op = pa_context_set_default_sink(pulse->cxt, sinkname, success_cb, pulse);
@@ -285,6 +294,8 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 	}
 
 	pa_operation_unref(op);
+
+	return !pulse->success;
 }
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
@@ -383,6 +394,7 @@ int main(int argc, char *argv[])
 	enum action verb;
 	char *sink = NULL;
 	union arg_t value;
+	int rc = 0;
 
 	static const struct option opts[] = {
 		{ "help", no_argument, 0, 'h' },
@@ -453,27 +465,27 @@ int main(int argc, char *argv[])
 			sink_get_volume(&pulse);
 			break;
 		case ACTION_SETVOL:
-			sink_set_volume(&pulse, pulse.sink, value.l);
+			rc = sink_set_volume(&pulse, pulse.sink, value.l);
 			break;
 		case ACTION_INCREASE:
-			sink_set_volume(&pulse, pulse.sink,
+			rc = sink_set_volume(&pulse, pulse.sink,
 					CLAMP(pulse.sink->volume_percent + value.l, 0, 150));
 			break;
 		case ACTION_DECREASE:
-			sink_set_volume(&pulse, pulse.sink,
+			rc = sink_set_volume(&pulse, pulse.sink,
 					CLAMP(pulse.sink->volume_percent - value.l, 0, 150));
 			break;
 		case ACTION_MUTE:
-			sink_mute(&pulse, pulse.sink);
+			rc = sink_mute(&pulse, pulse.sink);
 			break;
 		case ACTION_UNMUTE:
-			sink_unmute(&pulse, pulse.sink);
+			rc = sink_unmute(&pulse, pulse.sink);
 			break;
 		case ACTION_TOGGLE:
-			sink_set_mute(&pulse, pulse.sink, !pulse.sink->mute);
+			rc = sink_set_mute(&pulse, pulse.sink, !pulse.sink->mute);
 			break;
 		case ACTION_SETSINK:
-			set_default_sink(&pulse, value.c);
+			rc = set_default_sink(&pulse, value.c);
 		default:
 			break;
 		}
@@ -482,7 +494,7 @@ int main(int argc, char *argv[])
 	/* shut down */
 	pulse_deinit(&pulse);
 
-	return 0;
+	return rc;
 }
 
 /* vim: set noet ts=2 sw=2: */

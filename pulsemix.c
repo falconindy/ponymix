@@ -38,6 +38,14 @@
 
 #define UNUSED __attribute__((unused))
 
+#define CLAMP(x, low, high) \
+	__extension__ ({ \
+		typeof(x) _x = (x); \
+		typeof(low) _low = (low); \
+		typeof(high) _high = (high); \
+		((_x > _high) ? _high : ((_x < _low) ? _low : _x)); \
+	})
+
 union arg_t {
 	long l;
 	char *c;
@@ -263,7 +271,6 @@ static void set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 	op = pa_context_set_default_sink(pulse->cxt, sinkname, NULL, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-
 }
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
@@ -433,10 +440,12 @@ int main(int argc, char *argv[])
 			sink_set_volume(&pulse, pulse.sink, value.l);
 			break;
 		case ACTION_INCREASE:
-			sink_set_volume(&pulse, pulse.sink, pulse.sink->volume_percent + value.l);
+			sink_set_volume(&pulse, pulse.sink,
+					CLAMP(pulse.sink->volume_percent + value.l, 0, 150));
 			break;
 		case ACTION_DECREASE:
-			sink_set_volume(&pulse, pulse.sink, pulse.sink->volume_percent - value.l);
+			sink_set_volume(&pulse, pulse.sink,
+					CLAMP(pulse.sink->volume_percent - value.l, 0, 150));
 			break;
 		case ACTION_MUTE:
 			sink_mute(&pulse, pulse.sink);

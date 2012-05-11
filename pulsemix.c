@@ -208,7 +208,7 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 		pulse->sink = sink;
 	else {
 		s = pulse->sink;
-		s->next_sink = sink;
+		sink->next_sink = s;
 		pulse->sink = sink;
 	}
 }

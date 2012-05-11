@@ -313,7 +313,7 @@ static int pulse_connect(struct pulseaudio_t *pulse)
 
 void usage(FILE *out)
 {
-	fprintf(out, "usage: %s <command> [options]\n", program_invocation_short_name);
+	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
 	fputs(" -h, --help,        display this help and exit\n", out);
 	fputs(" -s, --sink <name>  control a sink other than the default\n", out);
@@ -321,13 +321,13 @@ void usage(FILE *out)
 	fputs("\nCommands:\n", out);
 	fputs("  list               list available sinks\n", out);
 	fputs("  get-volume         get volume for sink\n", out);
-	fputs("  set-volume         set volume for sink\n", out);
-	fputs("  increase           increase volume\n", out);
-	fputs("  decrease           decrease volume\n", out);
+	fputs("  set-volume VALUE   set volume for sink\n", out);
+	fputs("  increase VALUE     increase volume\n", out);
+	fputs("  decrease VALUE     decrease volume\n", out);
 	fputs("  mute               mute active sink\n", out);
 	fputs("  unmute             unmute active sink\n", out);
 	fputs("  toggle             toggle mute\n", out);
-	fputs("  set-sink           set default sink\n", out);
+	fputs("  set-sink SINKNAME  set default sink\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }

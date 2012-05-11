@@ -154,15 +154,13 @@ static void sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
 	sink_set_mute(pulse, sink, 1);
 }
 
-static struct sink_t *pulse_sink_new(const pa_sink_info *info)
+static struct sink_t *sink_new(const pa_sink_info *info)
 {
 	struct sink_t *sink = calloc(1, sizeof(struct sink_t));
 
 	sink->idx = info->index;
 	sink->name = info->name;
 	sink->desc = info->description;
-	sink->volume.channels = info->volume.channels;
-
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
 	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
@@ -204,7 +202,7 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 	if (eol)
 		return;
 
-	sink = pulse_sink_new(i);
+	sink = sink_new(i);
 
 	if (pulse->sink == NULL)
 		pulse->sink = sink;

@@ -49,6 +49,7 @@
 union arg_t {
 	long l;
 	char *c;
+	float f;
 };
 
 enum connectstate {
@@ -61,6 +62,8 @@ enum action {
 	ACTION_LIST = 0,
 	ACTION_GETVOL,
 	ACTION_SETVOL,
+	ACTION_GETBAL,
+	ACTION_SETBAL,
 	ACTION_INCREASE,
 	ACTION_DECREASE,
 	ACTION_MUTE,
@@ -74,9 +77,11 @@ struct sink_t {
 	uint32_t idx;
 	const char *name;
 	const char *desc;
+	const pa_channel_map *map;
 	pa_cvolume volume;
 	int volume_percent;
 	int mute;
+	float balance;
 
 	struct sink_t *next_sink;
 };
@@ -100,6 +105,21 @@ int xstrtol(const char *str, long *out)
 	errno = 0;
 
 	*out = strtol(str, &end, 10);
+	if (errno || str == end || (end && *end))
+		return -1;
+
+	return 0;
+}
+
+int xstrtof(const char *str, float *out)
+{
+	char *end = NULL;
+
+	if (str == NULL || *str == '\0')
+		return -1;
+	errno = 0;
+
+	*out = strtof(str, &end);
 	if (errno || str == end || (end && *end))
 		return -1;
 
@@ -146,6 +166,38 @@ static int sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long
 	return !pulse->success;
 }
 
+static void sink_get_balance(struct pulseaudio_t *pulse)
+{
+	printf("%f\n", pulse->sink->balance);
+}
+
+static int sink_set_balance(struct pulseaudio_t *pulse, struct sink_t *sink, float b)
+{
+	if(b < -1.0f)
+		b = -1.0f;
+	else if(b > 1.0f)
+		b = 1.0f;
+	
+	if(pa_channel_map_valid(sink->map) != 0)
+	{
+		pa_cvolume *vol = pa_cvolume_set_balance(&sink->volume, sink->map, b);
+		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt, sink->idx, vol, success_cb, pulse);
+		pulse_async_wait(pulse, op);
+		if (pulse->success)
+			printf("%f\n", b);
+		else {
+			int err = pa_context_errno(pulse->cxt);
+			fprintf(stderr, "failed to set balance: %s\n", pa_strerror(err));
+		}
+
+		pa_operation_unref(op);
+
+		return !pulse->success;
+	}
+	else
+		fprintf(stderr, "cant set balance on that sink.\n");
+}
+
 static int sink_set_mute(struct pulseaudio_t *pulse, struct sink_t *sink, int mute)
 {
 	pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, sink->idx,
@@ -179,11 +231,12 @@ static struct sink_t *sink_new(const pa_sink_info *info)
 	sink->idx = info->index;
 	sink->name = info->name;
 	sink->desc = info->description;
+	sink->map = &info->channel_map;
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
 	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
 	sink->mute = info->mute;
-
+	sink->balance = pa_cvolume_get_balance(&info->volume, &info->channel_map);
 	return sink;
 }
 
@@ -357,6 +410,9 @@ void usage(FILE *out)
 	fputs("  list               list available sinks\n", out);
 	fputs("  get-volume         get volume for sink\n", out);
 	fputs("  set-volume VALUE   set volume for sink\n", out);
+	fputs("  get-balance        get balance for sink\n", out);
+	fputs("  set-balance VALUE  set balance for sink, pass double -- before the negative number ex( -- -0.5) \n", out);
+	fputs("                     range is between -1.0 to 1.0 and 0 being centered\n", out);
 	fputs("  increase VALUE     increase volume\n", out);
 	fputs("  decrease VALUE     decrease volume\n", out);
 	fputs("  mute               mute active sink\n", out);
@@ -375,6 +431,10 @@ enum action string_to_verb(const char *string)
 		return ACTION_GETVOL;
 	else if (strcmp(string, "set-volume") == 0)
 		return ACTION_SETVOL;
+	else if (strcmp(string, "get-balance") == 0)
+		return ACTION_GETBAL;
+	else if (strcmp(string, "set-balance") == 0)
+		return ACTION_SETBAL;
 	else if (strcmp(string, "increase") == 0)
 		return ACTION_INCREASE;
 	else if (strcmp(string, "decrease") == 0)
@@ -428,13 +488,19 @@ int main(int argc, char *argv[])
 
 	optind++;
 	if (verb == ACTION_SETVOL ||
+			verb == ACTION_SETBAL ||
 			verb == ACTION_INCREASE ||
 			verb == ACTION_DECREASE)
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else {
 			/* validate to number */
-			int r = xstrtol(argv[optind], &value.l);
+			int r = 0;
+			if(verb == ACTION_SETBAL)
+				r = xstrtof(argv[optind], &value.f);
+			else
+				r = xstrtol(argv[optind], &value.l);
+			
 			if (r < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
@@ -469,6 +535,12 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_SETVOL:
 			rc = sink_set_volume(&pulse, pulse.sink, value.l);
+			break;
+		case ACTION_GETBAL:
+			sink_get_balance(&pulse);
+			break;
+		case ACTION_SETBAL:
+			rc = sink_set_balance(&pulse, pulse.sink, value.f);
 			break;
 		case ACTION_INCREASE:
 			rc = sink_set_volume(&pulse, pulse.sink,

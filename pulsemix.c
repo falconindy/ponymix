@@ -125,6 +125,9 @@ static void sink_get_volume(struct pulseaudio_t *pulse)
 
 static int sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
 {
+	if(v > 150)
+		v = 150;
+	
 	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,

@@ -60,6 +60,7 @@ enum connectstate {
 
 enum action {
 	ACTION_LIST = 0,
+	ACTION_LISTSTREAMS,
 	ACTION_GETVOL,
 	ACTION_SETVOL,
 	ACTION_GETBAL,
@@ -71,6 +72,16 @@ enum action {
 	ACTION_TOGGLE,
 	ACTION_SETSINK,
 	ACTION_INVALID
+};
+
+struct stream_t {
+	uint32_t idx;
+	const char *name;
+	pa_cvolume volume;
+	int volume_percent;
+	int mute;
+
+	struct stream_t *next_stream;
 };
 
 struct sink_t {
@@ -93,6 +104,7 @@ struct pulseaudio_t {
 	enum connectstate state;
 	int success;
 
+	struct stream_t *stream;
 	struct sink_t *sink;
 };
 
@@ -224,6 +236,18 @@ static int sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
 	return sink_set_mute(pulse, sink, 1);
 }
 
+static struct stream_t *stream_new(const pa_sink_input_info *info)
+{
+	struct stream_t *stream = calloc(1, sizeof(struct stream_t));
+
+	stream->idx = info->index;
+	stream->name = info->name;
+	memcpy(&stream->volume, &info->volume, sizeof(pa_cvolume));
+	stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
+	stream->mute = info->mute;
+	return stream;
+}
+
 static struct sink_t *sink_new(const pa_sink_info *info)
 {
 	struct sink_t *sink = calloc(1, sizeof(struct sink_t));
@@ -240,10 +264,26 @@ static struct sink_t *sink_new(const pa_sink_info *info)
 	return sink;
 }
 
+static void print_stream(struct stream_t *stream)
+{
+	printf("stream %2d: %s\n  Avg. Volume: %d%%\n",
+			stream->idx, stream->name, stream->volume_percent);
+}
+
 static void print_sink(struct sink_t *sink)
 {
 	printf("sink %2d: %s\n  %s\n  Avg. Volume: %d%%\n",
 			sink->idx, sink->name, sink->desc, sink->volume_percent);
+}
+
+static void print_streams(struct pulseaudio_t *pulse)
+{
+	struct stream_t *stream = pulse->stream;
+
+	while(stream) {
+		print_stream(stream);
+		stream = stream->next_stream;
+	}
 }
 
 static void print_sinks(struct pulseaudio_t *pulse)
@@ -264,8 +304,26 @@ static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
 	*sink_name = i->default_sink_name;
 }
 
-static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
-		void *raw)
+static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, void *raw)
+{
+	struct pulseaudio_t *pulse = raw;
+	struct stream_t *s, *stream;
+
+	if(eol)
+		return;
+
+	stream = stream_new(i);
+
+	if(pulse->stream == NULL)
+		pulse->stream = stream;
+	else {
+		s = pulse->stream;
+		stream->next_stream = s;
+		pulse->stream = stream;
+	}
+}
+
+static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,	void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 	struct sink_t *s, *sink;
@@ -302,6 +360,14 @@ static void state_cb(pa_context UNUSED *c, void *raw)
 	case PA_CONTEXT_TERMINATED:
 		break;
 	}
+}
+
+static void get_streams(struct pulseaudio_t *pulse)
+{
+	pa_operation *op = pa_context_get_sink_input_info_list(pulse->cxt,
+			 stream_add_cb, pulse);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
 }
 
 static void get_sinks(struct pulseaudio_t *pulse)
@@ -356,10 +422,17 @@ static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
 {
+	struct stream_t *stream = pulse->stream;
 	struct sink_t *sink = pulse->sink;
 
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
+
+	while (stream) {
+		stream = pulse->stream->next_stream;
+		free(pulse->stream);
+		pulse->stream = stream;
+	}
 
 	while (sink) {
 		sink = pulse->sink->next_sink;
@@ -376,6 +449,7 @@ static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
 	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
 	pulse->state = STATE_CONNECTING;
 	pulse->sink = NULL;
+	pulse->stream = NULL;
 
 	/* set state callback for connection */
 	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
@@ -408,6 +482,7 @@ void usage(FILE *out)
 
 	fputs("\nCommands:\n", out);
 	fputs("  list               list available sinks\n", out);
+	fputs("  list-streams       list current attached streams\n", out);
 	fputs("  get-volume         get volume for sink\n", out);
 	fputs("  set-volume VALUE   set volume for sink\n", out);
 	fputs("  get-balance        get balance for sink\n", out);
@@ -427,6 +502,8 @@ enum action string_to_verb(const char *string)
 {
 	if (strcmp(string, "list") == 0)
 		return ACTION_LIST;
+	else if (strcmp(string, "list-streams") == 0)
+		return ACTION_LISTSTREAMS;
 	else if (strcmp(string, "get-volume") == 0)
 		return ACTION_GETVOL;
 	else if (strcmp(string, "set-volume") == 0)
@@ -519,7 +596,12 @@ int main(int argc, char *argv[])
 	if (verb == ACTION_LIST) {
 		get_sinks(&pulse);
 		print_sinks(&pulse);
-	} else {
+	}
+	else if(verb == ACTION_LISTSTREAMS) {
+		get_streams(&pulse);
+		print_streams(&pulse);
+	}
+	else {
 		/* determine sink */
 		if (sink) {
 			get_sink_by_name(&pulse, sink);

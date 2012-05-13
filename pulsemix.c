@@ -194,8 +194,8 @@ static int sink_set_balance(struct pulseaudio_t *pulse, struct sink_t *sink, flo
 
 		return !pulse->success;
 	}
-	else
-		fprintf(stderr, "cant set balance on that sink.\n");
+	fprintf(stderr, "cant set balance on that sink.\n");
+	return -1;
 }
 
 static int sink_set_mute(struct pulseaudio_t *pulse, struct sink_t *sink, int mute)

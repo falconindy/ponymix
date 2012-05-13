@@ -541,20 +541,20 @@ void usage(FILE *out)
 	fputs("\nOptions:\n", out);
 	fputs(" -h, --help,          display this help and exit\n", out);
 	fputs(" -s, --sink <name>    control a sink other than the default\n", out);
-	fputs(" -S, --stream <index> control a sink stream instead of the sink itself\n", out);
+	fputs(" -S, --stream <index> control a stream instead of the sink itself\n", out);
 
 	fputs("\nCommands:\n", out);
 	fputs("  list               list available sinks\n", out);
-	fputs("  list-streams       list current attached streams\n", out);
-	fputs("  get-volume         get volume for sink\n", out);
-	fputs("  set-volume VALUE   set volume for sink\n", out);
+	fputs("  list-streams       list available streams\n", out);
+	fputs("  get-volume         get volume\n", out);
+	fputs("  set-volume VALUE   set volume\n", out);
 	fputs("  get-balance        get balance for sink\n", out);
 	fputs("  set-balance VALUE  set balance for sink, pass double -- before the negative number ex( -- -0.5) \n", out);
 	fputs("                     range is between -1.0 to 1.0 and 0 being centered\n", out);
 	fputs("  increase VALUE     increase volume\n", out);
 	fputs("  decrease VALUE     decrease volume\n", out);
-	fputs("  mute               mute active sink\n", out);
-	fputs("  unmute             unmute active sink\n", out);
+	fputs("  mute               mute active sink or stream\n", out);
+	fputs("  unmute             unmute active sink or stream\n", out);
 	fputs("  toggle             toggle mute\n", out);
 	fputs("  set-sink SINKNAME  set default sink\n", out);
 

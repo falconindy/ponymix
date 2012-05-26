@@ -477,7 +477,7 @@ void usage(FILE *out)
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
 	fputs(" -h, --help,          display this help and exit\n", out);
-	fputs(" -S, --stream <index> control a stream instead of the sink itself\n", out);
+	fputs(" -s, --stream <index> control a stream instead of the sink itself\n", out);
 
 	fputs("\nCommands:\n", out);
 	fputs("  list               list available sinks\n", out);

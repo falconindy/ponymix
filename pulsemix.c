@@ -85,6 +85,7 @@ struct source_t {
 	const char *desc;
 	const pa_channel_map *map;
 	pa_cvolume volume;
+  struct pa_proplist *proplist;
 	int volume_percent;
 	int mute;
 	float balance;
@@ -167,8 +168,6 @@ static int set_volume(struct pulseaudio_t *pulse, struct source_t *source, long 
 	}
 	else if(source->t == SINK)
 	{
-		printf("%d\n", source->idx);
-
 		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
 			source->idx, vol, success_cb, pulse);
 		pulse_async_wait(pulse, op);
@@ -234,7 +233,12 @@ static int set_mute(struct pulseaudio_t *pulse, struct source_t *source, int mut
 		pa_operation_unref(op);
 	}
 	
-	if(!pulse->success) {
+	if(pulse->success)
+	{
+		printf("%d\n", mute);
+	}
+	else
+	{
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to mute: %s\n", pa_strerror(err));
 	}
@@ -259,6 +263,8 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		struct source_t *stream = calloc(1, sizeof(struct source_t));
 		stream->idx = stream_info->index;
 		stream->name = stream_info->name;
+		stream->proplist = stream_info->proplist;
+		stream->desc = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
 		memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
 		stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
 		stream->mute = stream_info->mute;
@@ -285,8 +291,8 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 
 static void print_stream(struct source_t *stream)
 {
-	printf("stream %2d: %s\n  Avg. Volume: %d%%\n",
-			stream->idx, stream->name, stream->volume_percent);
+	printf("stream %2d: %s\n  %s\n  Avg. Volume: %d%%\n",
+			stream->idx, stream->name, stream->desc, stream->volume_percent);
 }
 
 static void print_sink(struct source_t *sink)
@@ -542,7 +548,7 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'h':
 			usage(stdout);
-		case 'S':
+		case 's':
 			stream = optarg;
 			break;
 		default:

@@ -70,21 +70,16 @@ enum action {
 	ACTION_MUTE,
 	ACTION_UNMUTE,
 	ACTION_TOGGLE,
-	ACTION_SETSINK,
 	ACTION_INVALID
 };
 
-struct stream_t {
-	uint32_t idx;
-	const char *name;
-	pa_cvolume volume;
-	int volume_percent;
-	int mute;
-
-	struct stream_t *next_stream;
+enum type {
+	SINK = 0,
+	SOURCE,
+	STREAM
 };
 
-struct sink_t {
+struct source_t {
 	uint32_t idx;
 	const char *name;
 	const char *desc;
@@ -93,8 +88,9 @@ struct sink_t {
 	int volume_percent;
 	int mute;
 	float balance;
+	enum type t;
 
-	struct sink_t *next_sink;
+	struct source_t *next_source;
 };
 
 struct pulseaudio_t {
@@ -104,8 +100,7 @@ struct pulseaudio_t {
 	enum connectstate state;
 	int success;
 
-	struct stream_t *stream;
-	struct sink_t *sink;
+	struct source_t *source;
 };
 
 int xstrtol(const char *str, long *out)
@@ -150,21 +145,35 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
-static void stream_get_volume(struct pulseaudio_t *pulse)
+static void get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%d\n", pulse->stream->volume_percent);
+	printf("%d\n", pulse->source->volume_percent);
 }
 
-static int stream_set_volume(struct pulseaudio_t *pulse, struct stream_t *stream, long v)
+static int set_volume(struct pulseaudio_t *pulse, struct source_t *source, long v)
 {
 	if(v > 150)
 		v = 150;
 
-	pa_cvolume *vol = pa_cvolume_set(&stream->volume, stream->volume.channels,
+	pa_cvolume *vol = pa_cvolume_set(&source->volume, source->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
-	pa_operation *op = pa_context_set_sink_input_volume(pulse->cxt, stream->idx,
-			vol, success_cb, pulse);
-	pulse_async_wait(pulse, op);
+
+	if(source->t == STREAM)
+	{
+		pa_operation *op = pa_context_set_sink_input_volume(pulse->cxt, source->idx,
+				vol, success_cb, pulse);
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
+	}
+	else if(source->t == SINK)
+	{
+		printf("%d\n", source->idx);
+
+		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
+			source->idx, vol, success_cb, pulse);
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
+	}
 
 	if(pulse->success)
 		printf("%ld\n", v);
@@ -173,55 +182,25 @@ static int stream_set_volume(struct pulseaudio_t *pulse, struct stream_t *stream
 		fprintf(stderr, "failed to set volume: %s\n", pa_strerror(err));
 	}
 
-	pa_operation_unref(op);
-
 	return !pulse->success;
 }
 
-static void sink_get_volume(struct pulseaudio_t *pulse)
+static void get_balance(struct pulseaudio_t *pulse)
 {
-	printf("%d\n", pulse->sink->volume_percent);
+	printf("%f\n", pulse->source->balance);
 }
 
-static int sink_set_volume(struct pulseaudio_t *pulse, struct sink_t *sink, long v)
-{
-	if(v > 150)
-		v = 150;
-	
-	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
-			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
-	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
-			sink->idx, vol, success_cb, pulse);
-	pulse_async_wait(pulse, op);
-
-	if (pulse->success)
-		printf("%ld\n", v);
-	else {
-		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to set volume: %s\n", pa_strerror(err));
-	}
-
-	pa_operation_unref(op);
-
-	return !pulse->success;
-}
-
-static void sink_get_balance(struct pulseaudio_t *pulse)
-{
-	printf("%f\n", pulse->sink->balance);
-}
-
-static int sink_set_balance(struct pulseaudio_t *pulse, struct sink_t *sink, float b)
+static int set_balance(struct pulseaudio_t *pulse, struct source_t *source, float b)
 {
 	if(b < -1.0f)
 		b = -1.0f;
 	else if(b > 1.0f)
 		b = 1.0f;
 	
-	if(pa_channel_map_valid(sink->map) != 0)
+	if(pa_channel_map_valid(source->map) != 0)
 	{
-		pa_cvolume *vol = pa_cvolume_set_balance(&sink->volume, sink->map, b);
-		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt, sink->idx, vol, success_cb, pulse);
+		pa_cvolume *vol = pa_cvolume_set_balance(&source->volume, source->map, b);
+		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt, source->idx, vol, success_cb, pulse);
 		pulse_async_wait(pulse, op);
 		if (pulse->success)
 			printf("%f\n", b);
@@ -234,119 +213,102 @@ static int sink_set_balance(struct pulseaudio_t *pulse, struct sink_t *sink, flo
 
 		return !pulse->success;
 	}
-	fprintf(stderr, "cant set balance on that sink.\n");
+	fprintf(stderr, "cant set balance on that sound source.\n");
 	return -1;
 }
 
-static int stream_set_mute(struct pulseaudio_t *pulse, struct stream_t *stream, int mute)
+static int set_mute(struct pulseaudio_t *pulse, struct source_t *source, int mute)
 {
-	pa_operation* op = pa_context_set_sink_input_mute(pulse->cxt, stream->idx,
-			mute, success_cb, pulse);
-	pulse_async_wait(pulse, op);
+	if(source->t == STREAM)
+	{
+		pa_operation* op = pa_context_set_sink_input_mute(pulse->cxt, source->idx,
+				mute, success_cb, pulse);
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
+	}
+	else if(source->t == SINK)
+	{
+		pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, source->idx,
+				mute, success_cb, pulse);
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
+	}
 	
 	if(!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to mute stream: %s\n", pa_strerror(err));
+		fprintf(stderr, "failed to mute: %s\n", pa_strerror(err));
 	}
-
-	pa_operation_unref(op);
 
 	return !pulse->success;
 }
 
-static int stream_unmute(struct pulseaudio_t *pulse, struct stream_t *stream)
+static int unmute(struct pulseaudio_t *pulse, struct source_t *source)
 {
-	return stream_set_mute(pulse, stream, 0);
+	return set_mute(pulse, source, 0);
 }
 
-static int stream_mute(struct pulseaudio_t *pulse, struct stream_t *stream)
+static int mute(struct pulseaudio_t *pulse, struct source_t *source)
 {
-	return stream_set_mute(pulse, stream, 1);
+	return set_mute(pulse, source, 1);
 }
 
-static int sink_set_mute(struct pulseaudio_t *pulse, struct sink_t *sink, int mute)
+static struct source_t *source_new(const pa_sink_input_info *stream_info, const pa_sink_info *sink_info)
 {
-	pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, sink->idx,
-			mute, success_cb, pulse);
-	pulse_async_wait(pulse, op);
-
-	if (!pulse->success) {
-		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to mute sink: %s\n", pa_strerror(err));
+	if(stream_info != NULL)
+	{
+		struct source_t *stream = calloc(1, sizeof(struct source_t));
+		stream->idx = stream_info->index;
+		stream->name = stream_info->name;
+		memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
+		stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
+		stream->mute = stream_info->mute;
+		stream->t = STREAM;
+		return stream;
 	}
+	else
+	{
+		struct source_t *sink = calloc(1, sizeof(struct source_t));
 
-	pa_operation_unref(op);
-
-	return !pulse->success;
+		sink->idx = sink_info->index;
+		sink->name = sink_info->name;
+		sink->desc = sink_info->description;
+		sink->map = &sink_info->channel_map;
+		memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
+		sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
+				/ PA_VOLUME_NORM);
+		sink->mute = sink_info->mute;
+		sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
+		sink->t = SINK;
+		return sink;
+	}
 }
 
-static int sink_unmute(struct pulseaudio_t *pulse, struct sink_t *sink)
-{
-	return sink_set_mute(pulse, sink, 0);
-}
-
-static int sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
-{
-	return sink_set_mute(pulse, sink, 1);
-}
-
-static struct stream_t *stream_new(const pa_sink_input_info *info)
-{
-	struct stream_t *stream = calloc(1, sizeof(struct stream_t));
-
-	stream->idx = info->index;
-	stream->name = info->name;
-	memcpy(&stream->volume, &info->volume, sizeof(pa_cvolume));
-	stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
-	stream->mute = info->mute;
-	return stream;
-}
-
-static struct sink_t *sink_new(const pa_sink_info *info)
-{
-	struct sink_t *sink = calloc(1, sizeof(struct sink_t));
-
-	sink->idx = info->index;
-	sink->name = info->name;
-	sink->desc = info->description;
-	sink->map = &info->channel_map;
-	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
-			/ PA_VOLUME_NORM);
-	sink->mute = info->mute;
-	sink->balance = pa_cvolume_get_balance(&info->volume, &info->channel_map);
-	return sink;
-}
-
-static void print_stream(struct stream_t *stream)
+static void print_stream(struct source_t *stream)
 {
 	printf("stream %2d: %s\n  Avg. Volume: %d%%\n",
 			stream->idx, stream->name, stream->volume_percent);
 }
 
-static void print_sink(struct sink_t *sink)
+static void print_sink(struct source_t *sink)
 {
 	printf("sink %2d: %s\n  %s\n  Avg. Volume: %d%%\n",
 			sink->idx, sink->name, sink->desc, sink->volume_percent);
 }
 
-static void print_streams(struct pulseaudio_t *pulse)
+static void print_sources(struct pulseaudio_t *pulse)
 {
-	struct stream_t *stream = pulse->stream;
+	struct source_t *source = pulse->source;
 
-	while(stream) {
-		print_stream(stream);
-		stream = stream->next_stream;
-	}
-}
-
-static void print_sinks(struct pulseaudio_t *pulse)
-{
-	struct sink_t *sink = pulse->sink;
-
-	while (sink) {
-		print_sink(sink);
-		sink = sink->next_sink;
+	while(source) {
+		if(source->t == SINK)
+		{
+			print_sink(source);
+		}
+		else if(source->t == STREAM)
+		{
+			print_stream(source);
+		}
+		source = source->next_source;
 	}
 }
 
@@ -361,38 +323,38 @@ static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
 static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct stream_t *s, *stream;
+	struct source_t *s, *stream;
 
 	if(eol)
 		return;
 
-	stream = stream_new(i);
+	stream = source_new(i, NULL);
 
-	if(pulse->stream == NULL)
-		pulse->stream = stream;
+	if(pulse->source == NULL)
+		pulse->source = stream;
 	else {
-		s = pulse->stream;
-		stream->next_stream = s;
-		pulse->stream = stream;
+		s = pulse->source;
+		stream->next_source = s;
+		pulse->source = stream;
 	}
 }
 
 static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,	void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct sink_t *s, *sink;
+	struct source_t *s, *sink;
 
 	if (eol)
 		return;
 
-	sink = sink_new(i);
+	sink = source_new(NULL, i);
 
-	if (pulse->sink == NULL)
-		pulse->sink = sink;
+	if (pulse->source == NULL)
+		pulse->source = sink;
 	else {
-		s = pulse->sink;
-		sink->next_sink = s;
-		pulse->sink = sink;
+		s = pulse->source;
+		sink->next_source = s;
+		pulse->source = sink;
 	}
 }
 
@@ -459,47 +421,17 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	get_sink_by_name(pulse, sink_name);
 }
 
-static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
-{
-	pa_operation *op;
-
-	get_sink_by_name(pulse, sinkname);
-	if (pulse->sink == NULL) {
-		warnx("failed to get sink by name\n");
-		return 1;
-	}
-
-	op = pa_context_set_default_sink(pulse->cxt, sinkname, success_cb, pulse);
-	pulse_async_wait(pulse, op);
-
-	if (!pulse->success) {
-		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to set default sink to %s: %s\n", sinkname, pa_strerror(err));
-	}
-
-	pa_operation_unref(op);
-
-	return !pulse->success;
-}
-
 static void pulse_deinit(struct pulseaudio_t *pulse)
 {
-	struct stream_t *stream = pulse->stream;
-	struct sink_t *sink = pulse->sink;
+	struct source_t *source = pulse->source;
 
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
 
-	while (stream) {
-		stream = pulse->stream->next_stream;
-		free(pulse->stream);
-		pulse->stream = stream;
-	}
-
-	while (sink) {
-		sink = pulse->sink->next_sink;
-		free(pulse->sink);
-		pulse->sink = sink;
+	while (source) {
+		source = pulse->source->next_source;
+		free(pulse->source);
+		pulse->source = source;
 	}
 }
 
@@ -510,8 +442,7 @@ static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
 	pulse->mainloop_api = pa_mainloop_get_api(pulse->mainloop);
 	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
 	pulse->state = STATE_CONNECTING;
-	pulse->sink = NULL;
-	pulse->stream = NULL;
+	pulse->source = NULL;
 
 	/* set state callback for connection */
 	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
@@ -540,7 +471,6 @@ void usage(FILE *out)
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
 	fputs(" -h, --help,          display this help and exit\n", out);
-	fputs(" -s, --sink <name>    control a sink other than the default\n", out);
 	fputs(" -S, --stream <index> control a stream instead of the sink itself\n", out);
 
 	fputs("\nCommands:\n", out);
@@ -556,7 +486,6 @@ void usage(FILE *out)
 	fputs("  mute               mute active sink or stream\n", out);
 	fputs("  unmute             unmute active sink or stream\n", out);
 	fputs("  toggle             toggle mute\n", out);
-	fputs("  set-sink SINKNAME  set default sink\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -585,8 +514,6 @@ enum action string_to_verb(const char *string)
 		return ACTION_UNMUTE;
 	else if (strcmp(string, "toggle") == 0)
 		return ACTION_TOGGLE;
-	else if (strcmp(string, "set-sink") == 0)
-		return ACTION_SETSINK;
 
 	return ACTION_INVALID;
 }
@@ -595,29 +522,26 @@ int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
 	enum action verb;
-	char *sink = NULL;
 	char *stream = NULL;
 	union arg_t value;
 	int rc = 0;
 
-	static const struct option opts[] = {
+	static const struct option opts[] = 
+	{
 		{ "help", no_argument, 0, 'h' },
-		{ "sink", required_argument, 0, 's' },
-		{ "stream", required_argument, 0, 'S'},
+		{ "stream", required_argument, 0, 's'},
 		{ 0, 0, 0, 0 },
 	};
 
-	for (;;) {
-		int opt = getopt_long(argc, argv, "hsS:", opts, NULL);
+	for (;;) 
+	{
+		int opt = getopt_long(argc, argv, "hs:", opts, NULL);
 		if (opt == -1)
 			break;
 
 		switch (opt) {
 		case 'h':
 			usage(stdout);
-		case 's':
-			sink = optarg;
-			break;
 		case 'S':
 			stream = optarg;
 			break;
@@ -626,19 +550,17 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* string -> enum */
 	verb = (optind == argc) ? ACTION_LIST : string_to_verb(argv[optind]);
 	if (verb == ACTION_INVALID)
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 
 	optind++;
-	if (verb == ACTION_SETVOL ||
-			verb == ACTION_SETBAL ||
-			verb == ACTION_INCREASE ||
-			verb == ACTION_DECREASE)
+	if (verb == ACTION_SETVOL || verb == ACTION_SETBAL || verb == ACTION_INCREASE || verb == ACTION_DECREASE)
+	{
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
-		else {
+		else 
+		{
 			/* validate to number */
 			int r = 0;
 			if(verb == ACTION_SETBAL)
@@ -649,36 +571,24 @@ int main(int argc, char *argv[])
 			if (r < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
-	else if (verb == ACTION_SETSINK) {
-		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
-		else
-			value.c = argv[optind];
 	}
-
 	/* initialize connection */
-	pulse_init(&pulse, "lolpulse");
+	pulse_init(&pulse, "pulsemix");
 	if (pulse_connect(&pulse) != 0)
 		return 1;
 
-	if (verb == ACTION_LIST) {
+	if (verb == ACTION_LIST) 
+	{
 		get_sinks(&pulse);
-		print_sinks(&pulse);
+		print_sources(&pulse);
 	}
-	else if(verb == ACTION_LISTSTREAMS) {
+	else if(verb == ACTION_LISTSTREAMS) 
+	{
 		get_streams(&pulse);
-		print_streams(&pulse);
+		print_sources(&pulse);
 	}
-	else {
-		/* determine sink */
-		if (sink) {
-			get_sink_by_name(&pulse, sink);
-		} else
-			get_default_sink(&pulse);
-
-		if(pulse.sink == NULL && !stream)
-			errx(EXIT_FAILURE, "sink not found: %s", sink ? sink : "default");
-
+	else 
+	{
 		if(stream)
 		{
 			long idx = 0;
@@ -688,72 +598,49 @@ int main(int argc, char *argv[])
 			else
 				get_stream_by_index(&pulse, (uint32_t)idx);
 
-			if(pulse.stream == NULL)
-			{
+			if(pulse.source == NULL)
 				errx(EXIT_FAILURE, "stream not found: %s", stream ? stream : "default");
-			}
+		}
+		else
+		{
+			get_default_sink(&pulse);
 		}
 
-		switch (verb) {
+		switch (verb) 
+		{
 		case ACTION_GETVOL:
-			if(stream)
-				stream_get_volume(&pulse);
-			else
-				sink_get_volume(&pulse);
+				get_volume(&pulse);
 			break;
 		case ACTION_SETVOL:
-			if(pulse.stream != NULL)
-				rc = stream_set_volume(&pulse, pulse.stream, value.l);
-			else
-				rc = sink_set_volume(&pulse, pulse.sink, value.l);
+				rc = set_volume(&pulse, pulse.source, value.l);
 			break;
 		case ACTION_GETBAL:
 			if(stream)
 				fprintf(stderr, "balance is not supported for streams\n");
 			else
-				sink_get_balance(&pulse);
+				get_balance(&pulse);
 			break;
 		case ACTION_SETBAL:
 			if(stream)
 				fprintf(stderr, "balance is not supported for streams\n");
 			else
-				rc = sink_set_balance(&pulse, pulse.sink, value.f);
+				rc = set_balance(&pulse, pulse.source, value.f);
 			break;
 		case ACTION_INCREASE:
-			if(stream)
-				rc = stream_set_volume(&pulse, pulse.stream, CLAMP(pulse.stream->volume_percent + value.l, 0, 150));
-			else
-				rc = sink_set_volume(&pulse, pulse.sink, CLAMP(pulse.sink->volume_percent + value.l, 0, 150));
+				rc = set_volume(&pulse, pulse.source, CLAMP(pulse.source->volume_percent + value.l, 0, 150));
 			break;
 		case ACTION_DECREASE:
-			if(stream)
-				rc = stream_set_volume(&pulse, pulse.stream, CLAMP(pulse.stream->volume_percent - value.l, 0, 150));
-			else
-				rc = sink_set_volume(&pulse, pulse.sink, CLAMP(pulse.sink->volume_percent - value.l, 0, 150));
+				rc = set_volume(&pulse, pulse.source, CLAMP(pulse.source->volume_percent - value.l, 0, 150));
 			break;
 		case ACTION_MUTE:
-			if(stream)
-				rc = stream_mute(&pulse, pulse.stream);
-			else
-				rc = sink_mute(&pulse, pulse.sink);
+				rc = mute(&pulse, pulse.source);
 			break;
 		case ACTION_UNMUTE:
-			if(stream)
-				rc = stream_unmute(&pulse, pulse.stream);
-			else
-				rc = sink_unmute(&pulse, pulse.sink);
+				rc = unmute(&pulse, pulse.source);
 			break;
 		case ACTION_TOGGLE:
-			if(stream)
-				rc = stream_set_mute(&pulse, pulse.stream, !pulse.stream->mute);
-			else
-				rc = sink_set_mute(&pulse, pulse.sink, !pulse.sink->mute);
+				rc = set_mute(&pulse, pulse.source, !pulse.source->mute);
 			break;
-		case ACTION_SETSINK:
-			if(stream)
-				fprintf(stderr, "you dumbnut you cant set a sink with the --stream command\n");
-			else
-				rc = set_default_sink(&pulse, value.c);
 		default:
 			break;
 		}

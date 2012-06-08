@@ -7,7 +7,7 @@ this fork focus on implenting the functionality pavucontrol has, per application
 
 ###Usage
 
-* pulsemix [options] [command]...
+* pulsemix [options] [command]..  and if no options are given it will control the default sink/output
 
 * Options:
     * -h, --help,          display this help and exit

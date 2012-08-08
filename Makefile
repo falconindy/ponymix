@@ -3,7 +3,7 @@ SRC=${wildcard *.c}
 OBJ=${SRC:.c=.o}
 
 PREFIX  ?= /usr/local
-CFLAGS  := -std=c99 -Wall -Wextra -pedantic -O2 -D_REENTRANT ${CFLAGS}
+CFLAGS  := -std=gnu99 -Wall -Wextra -pedantic -O2 -D_REENTRANT ${CFLAGS}
 LDFLAGS := -lpulse -lm ${LDFLAGS}
 
 ${OUT}: ${OBJ}

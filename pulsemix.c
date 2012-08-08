@@ -36,6 +36,16 @@
 
 #include "pulsemix.h"
 
+#define UNUSED __attribute__((unused))
+
+#define CLAMP(x, low, high) \
+	__extension__ ({ \
+		typeof(x) _x = (x); \
+		typeof(low) _low = (low); \
+		typeof(high) _high = (high); \
+		((_x > _high) ? _high : ((_x < _low) ? _low : _x)); \
+	})
+
 static void state_cb(pa_context UNUSED *c, void *raw);
 static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op);
 static struct source_t *source_new(const pa_sink_input_info *stream_info, const pa_sink_info *sink_info, const pa_source_info *source_info);
@@ -90,7 +100,6 @@ int pulse_connect(struct pulseaudio_t *pulse)
 	if(pulse->state == STATE_ERROR) {
 		r = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to connect to pulse daemon: %s\n", pa_strerror(r));
-		return 1;
 	}
 	return 0;
 }
@@ -375,14 +384,14 @@ void set_default(struct pulseaudio_t *pulse)
 			type = "output";
 			break;
 		default:
-			errx(EXIT_FAILURE, "error cant use application with set-default command.\n");
+			errx(EXIT_FAILURE, "error cant use application with set-default command.");
 			return;
 	}
 
 	pulse_async_wait(pulse, op);
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		errx(EXIT_FAILURE, "failed to set default %s to %s: %s\n", type, pulse->source->name, pa_strerror(err));
+		errx(EXIT_FAILURE, "failed to set default %s to %s: %s", type, pulse->source->name, pa_strerror(err));
 	}
 	pa_operation_unref(op);
 }
@@ -396,30 +405,31 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 {
 	pa_cvolume *vol = NULL;
 
-	if (v > 150)
-		v = 150;
-
+	v = CLAMP(v, 0, 150);
 	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels,(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 
-	if (pulse->source->t == TYPE_STREAM) {
-		pa_operation *op = pa_context_set_sink_input_volume(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		pa_operation_unref(op);
-	} else if(pulse->source->t == TYPE_SINK) {
-		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		pa_operation_unref(op);
-	} else {
-		pa_operation *op = pa_context_set_source_volume_by_index(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		pa_operation_unref(op);
+	pa_operation *op;
+	switch (pulse->source->t) {
+		case TYPE_STREAM:
+			op = pa_context_set_sink_input_volume(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+			break;
+		case TYPE_SINK:
+			op = pa_context_set_sink_volume_by_index(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+			break;
+		case TYPE_SOURCE:
+			op = pa_context_set_source_volume_by_index(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+			break;
+		default:
+			return 1;
 	}
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
 
 	if(pulse->success)
 		printf("%ld\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to set volume: %s\n", pa_strerror(err));
+		errx(EXIT_FAILURE, "failed to set volume: %s", pa_strerror(err));
 	}
 
 	return !pulse->success;
@@ -427,25 +437,18 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 
 void get_balance(struct pulseaudio_t *pulse)
 {
-	if(pulse->source->t != TYPE_SINK) {
-		fprintf(stderr, "error can only get balance on output devices\n");
-		return;
-	}
+	if(pulse->source->t != TYPE_SINK)
+		errx(EXIT_FAILURE, "error can only get balance on output devices");
 
 	printf("%.2f\n", pulse->source->balance);
 }
 
 int set_balance(struct pulseaudio_t *pulse, float b)
 {
-	if(pulse->source->t != TYPE_SINK) {
-		fprintf(stderr, "error can only set balance on output devices\n");
-		return -1;
-	}
+	if(pulse->source->t != TYPE_SINK)
+		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
-	if (b < -1.0f)
-		b = -1.0f;
-	else if (b > 1.0f)
-		b = 1.0f;
+	b = CLAMP(b, -1.0f, 1.0f);
 
 	if(pa_channel_map_valid(pulse->source->map) != 0) {
 		pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
@@ -456,7 +459,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 			printf("%.2f\n", b);
 		else {
 			int err = pa_context_errno(pulse->cxt);
-			fprintf(stderr, "failed to set balance: %s\n", pa_strerror(err));
+			errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));
 		}
 
 		pa_operation_unref(op);
@@ -464,7 +467,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 		return !pulse->success;
 	}
 
-	fprintf(stderr, "cant set balance on that input device.\n");
+	errx(EXIT_FAILURE, "cant set balance on that input device.");
 	return -1;
 }
 
@@ -490,7 +493,7 @@ int set_mute(struct pulseaudio_t *pulse, int mute)
 
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		errx(EXIT_FAILURE, "failed to mute: %s\n", pa_strerror(err));
+		errx(EXIT_FAILURE, "failed to mute: %s", pa_strerror(err));
 	}
 
 	return !pulse->success;

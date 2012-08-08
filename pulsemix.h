@@ -24,7 +24,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define UNUSED __attribute__((unused))
 
 #include <pulse/pulseaudio.h>
 

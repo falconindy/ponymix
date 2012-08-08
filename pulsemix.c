@@ -324,12 +324,19 @@ void print_sources(struct pulseaudio_t *pulse)
 	struct source_t *source = pulse->source;
 
 	while (source) {
-		if(source->t == TYPE_SINK)
-			print_sink(source);
-		else if(source->t == TYPE_STREAM)
-			print_stream(source);
-		else if(source->t == TYPE_SOURCE)
-			print_source(source);
+		switch (source->t) {
+			case TYPE_SINK:
+				print_sink(source);
+				break;
+			case TYPE_STREAM:
+				print_stream(source);
+				break;
+			case TYPE_SOURCE:
+				print_source(source);
+				break;
+			default:
+				break;
+		}
 
 		source = source->next_source;
 	}
@@ -355,27 +362,29 @@ static void print_source(struct source_t *source)
 
 void set_default(struct pulseaudio_t *pulse)
 {
-	if (pulse->source->t == TYPE_STREAM)
-		fprintf(stderr, "error cant use application with set-default command.\n");
-	else if (pulse->source->t == TYPE_SINK) {
-		pa_operation *op = pa_context_set_default_sink(pulse->cxt, pulse->source->name, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		if (!pulse->success) {
-			int err = pa_context_errno(pulse->cxt);
-			fprintf(stderr, "failed to set default input to %s: %s\n", pulse->source->name, pa_strerror(err));
-		}
-		pa_operation_unref(op);
+	pa_operation *op = NULL;
+	const char *type = NULL;
+
+	switch (pulse->source->t) {
+		case TYPE_SINK:
+			op = pa_context_set_default_sink(pulse->cxt, pulse->source->name, success_cb, pulse);
+			type = "input";
+			break;
+		case TYPE_SOURCE:
+			op = pa_context_set_default_source(pulse->cxt, pulse->source->name, success_cb, pulse);
+			type = "output";
+			break;
+		default:
+			errx(EXIT_FAILURE, "error cant use application with set-default command.\n");
+			return;
 	}
-	else
-	{
-		pa_operation *op = pa_context_set_default_source(pulse->cxt, pulse->source->name, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		if (!pulse->success) {
-			int err = pa_context_errno(pulse->cxt);
-			fprintf(stderr, "failed to set default output to %s: %s\n", pulse->source->name, pa_strerror(err));
-		}
-		pa_operation_unref(op);
+
+	pulse_async_wait(pulse, op);
+	if (!pulse->success) {
+		int err = pa_context_errno(pulse->cxt);
+		errx(EXIT_FAILURE, "failed to set default %s to %s: %s\n", type, pulse->source->name, pa_strerror(err));
 	}
+	pa_operation_unref(op);
 }
 
 void get_volume(struct pulseaudio_t *pulse)
@@ -461,7 +470,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 
 int set_mute(struct pulseaudio_t *pulse, int mute)
 {
-	pa_operation *op;
+	pa_operation *op = NULL;
 
 	switch (pulse->source->t) {
 		case TYPE_STREAM:

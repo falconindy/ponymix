@@ -1,24 +1,21 @@
-CC=gcc
-CFLAGS=-Wall -Wextra -pedantic -O2 -g -D_REENTRANT
- 
-LIBS= -lpulse -lm $(LDFLAGS)
-HEADERS = pulsemix.h
-EXT=.c
-SRCS= main.c pulsemix.c
-OBJECTS = ${SRCS:${EXT}=.o}
+OUT=pulsemix
+SRC=${wildcard *.c}
+OBJ=${SRC:.c=.o}
 
-.PHONY: clean
- 
-%.o: %.c $(HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS)
+PREFIX  ?= /usr/local
+CFLAGS  := -std=c99 -Wall -Wextra -pedantic -O2 -D_REENTRANT ${CFLAGS}
+LDFLAGS := -lpulse -lm ${LDFLAGS}
 
-pulsemix: $(OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+${OUT}: ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
-install: pulsemix
-	mkdir -p $(DESTDIR)/usr/bin
-	install -m755 pulsemix $(DESTDIR)/usr/bin/pulsemix
- 
+install: ${OUT}
+	install -D -m755 ${OUT} ${DESTDIR}${PREFIX}/bin/${OUT}
+
+uninstall:
+	rm -f ${DESTDIR}${PREFIX}/bin/${OUT}
+
 clean:
-	rm -f *.o pulsemix
+	${RM} ${OUT} ${OBJ}
 
+.PHONY: clean install uninstall

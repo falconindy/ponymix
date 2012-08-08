@@ -55,21 +55,118 @@ enum action {
 	ACTION_INVALID
 };
 
-static void usage(FILE *out);
-static enum action string_to_verb(const char *string);
+struct pulseaudio_t pulse;
+
 static int xstrtof(const char *str, float *out);
 static int xstrtol(const char *str, long *out);
+static enum action string_to_verb(const char *string);
+static void usage(FILE *out);
+
+int xstrtof(const char *str, float *out)
+{
+	char *end = NULL;
+
+	if (str == NULL || *str == '\0')
+		return -1;
+	errno = 0;
+
+	*out = strtof(str, &end);
+	if (errno || str == end || (end && *end))
+		return -1;
+
+	return 0;
+}
+
+int xstrtol(const char *str, long *out)
+{
+	char *end = NULL;
+
+	if (str == NULL || *str == '\0')
+		return -1;
+	errno = 0;
+
+	*out = strtol(str, &end, 10);
+	if (errno || str == end || (end && *end))
+		return -1;
+
+	return 0;
+}
+
+enum action string_to_verb(const char *string)
+{
+	if (strcmp(string, "list-defaults") == 0)
+		return ACTION_LISTDEFAULTS;
+	else if (strcmp(string, "list-applications") == 0)
+		return ACTION_LISTAPPLICATIONS;
+	else if (strcmp(string, "list-inputs") == 0)
+		return ACTION_LISTINPUT;
+	else if (strcmp(string, "list-outputs") == 0)
+		return ACTION_LISTOUTPUT;
+	else if (strcmp(string, "vset-default") == 0)
+		return ACTION_SETDEFAULT;
+	else if (strcmp(string, "get-volume") == 0)
+		return ACTION_GETVOL;
+	else if (strcmp(string, "set-volume") == 0)
+		return ACTION_SETVOL;
+	else if (strcmp(string, "get-balance") == 0)
+		return ACTION_GETBAL;
+	else if (strcmp(string, "set-balance") == 0)
+		return ACTION_SETBAL;
+	else if (strcmp(string, "increase") == 0)
+		return ACTION_INCREASE;
+	else if (strcmp(string, "decrease") == 0)
+		return ACTION_DECREASE;
+	else if (strcmp(string, "mute") == 0)
+		return ACTION_MUTE;
+	else if (strcmp(string, "unmute") == 0)
+		return ACTION_UNMUTE;
+	else if (strcmp(string, "is-muted") == 0)
+		return ACTION_ISMUTED;
+	else if (strcmp(string, "toggle") == 0)
+		return ACTION_TOGGLE;
+
+	return ACTION_INVALID;
+}
+
+void usage(FILE *out)
+{
+	fprintf(out, "Usage: %s [options] <command>...\n", program_invocation_short_name);
+	fputs("\n Options:\n", out);
+	fputs("  -h, --help,           display this help and exit\n", out);
+	fputs("  -a  --application=id  control a application\n", out);
+	fputs("  -i, --input=id        control the input device (if no id given use default set)\n", out);
+	fputs("  -o, --output=id       control the output device (if no id given use default set)\n", out);
+
+	fputs("\n Commands:\n", out);
+	fputs("  list-defaults         list default set input/output devices\n", out);
+	fputs("  list-applications     list available applications\n", out);
+	fputs("  list-inputs           list available input devices\n", out);
+	fputs("  list-outputs          list available output devices\n", out);
+	fputs("  set-default           sets the selected input/output as default\n", out);
+	fputs("  get-volume            get volume\n", out);
+	fputs("  set-volume VALUE      set volume\n", out);
+	fputs("  get-balance           get balance for output\n", out);
+	fputs("  set-balance VALUE     set balance for output, pass double between -1.0 to 1.0\n", out);
+	fputs("  increase VALUE        increase volume\n", out);
+	fputs("  decrease VALUE        decrease volume\n", out);
+	fputs("  mute                  mute\n", out);
+	fputs("  unmute                unmute\n", out);
+	fputs("  is-muted              check if muted\n", out);
+	fputs("  toggle                toggle mute\n", out);
+
+	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
+}
 
 int main(int argc, char *argv[])
 {
 	int rc = 0;
-	char *sink = NULL;
-	char *source = NULL;
-	char *stream = NULL;
-	enum action verb;
 	enum type use = TYPE_INVALID;
+	enum action verb;
+	char *name = NULL;
 	union arg_t value;
-	struct pulseaudio_t pulse;
+
+	void (*get_default)(struct pulseaudio_t *) = NULL;
+	void (*get_by_index)(struct pulseaudio_t *, uint32_t) = NULL;
 
 	static const struct option opts[] = {
 		{ "help",        no_argument,       0, 'h' },
@@ -91,21 +188,28 @@ int main(int argc, char *argv[])
 			case 'a':
 				use = TYPE_STREAM;
 				if (optarg != NULL)
-					stream = optarg;
+					name = optarg;
+
+				get_by_index = get_stream_by_index;
 				break;
 			case 'i':
 				use = TYPE_SOURCE;
 				if (optarg != NULL)
-					source = optarg;
+					name = optarg;
+
+				get_default  = get_default_source;
+				get_by_index = get_source_by_index;
 				break;
 			case 'o':
 				use = TYPE_SINK;
 				if (optarg != NULL)
-					sink = optarg;
+					name = optarg;
+
+				get_default  = get_default_sink;
+				get_by_index = get_sink_by_index;
 				break;
 			default:
-				exit(EXIT_FAILURE);
-				break;
+				errx(EXIT_FAILURE, "Try 'pulsemix --help' for more information.");
 		}
 	}
 
@@ -161,52 +265,23 @@ int main(int argc, char *argv[])
 			break;
 	}
 
+	if (use == TYPE_INVALID)
+		errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
 
-	long idx;
-	int r;
-	switch (use) {
-		case TYPE_INVALID:
-			errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
-			break;
-		case TYPE_STREAM:
-			if (stream == NULL)
-				errx(EXIT_FAILURE, "controlling applications needs an ID");
+	if (!name && !get_default)
+		errx(EXIT_FAILURE, "controlling applications needs an ID");
+	else if (!name)
+		get_default(&pulse);
+	else {
+		long idx;
+		int r = xstrtol(name, &idx);
 
-			r = xstrtol(stream, &idx);
-			if (r < 0)
-				errx(EXIT_FAILURE, "invalid ID: %s", stream);
-			else
-				get_stream_by_index(&pulse, (uint32_t)idx);
-
-			if (pulse.source == NULL)
-				errx(EXIT_FAILURE, "application not found with ID: %s", stream);
-			break;
-		case TYPE_SOURCE:
-			if (!source)
-				get_default_source(&pulse);
-
-			r = xstrtol(source, &idx);
-			if (r < 0)
-				errx(EXIT_FAILURE, "invalid ID: %s", source);
-			else
-				get_source_by_index(&pulse, (uint32_t)idx);
-
-			if(pulse.source == NULL)
-				errx(EXIT_FAILURE, "input not found with ID: %s", source);
-			break;
-		case TYPE_SINK:
-			if(sink == NULL)
-				get_default_sink(&pulse);
-
-			r = xstrtol(sink, &idx);
-			if (r < 0)
-				errx(EXIT_FAILURE, "invalid ID: %s", sink);
-			else
-				get_sink_by_index(&pulse, (uint32_t)idx);
-
-			if (pulse.source == NULL)
-				errx(EXIT_FAILURE, "output not found with ID: %s", sink);
-			break;
+		if (r < 0)
+			errx(EXIT_FAILURE, "invalid ID: %s", name);
+		else
+			get_by_index(&pulse, (uint32_t)idx);
+		if(pulse.source == NULL)
+			errx(EXIT_FAILURE, "input not found with ID: %s", name);
 	}
 
 	switch (verb) {
@@ -250,102 +325,6 @@ int main(int argc, char *argv[])
 exit:
 	pulse_deinit(&pulse);
 	return rc;
-}
-
-void usage(FILE *out)
-{
-	fprintf(out, "Usage: %s [options] <command>...\n", program_invocation_short_name);
-	fputs("\n Options:\n", out);
-	fputs("  -h, --help,           display this help and exit\n", out);
-	fputs("  -a  --application=id  control a application\n", out);
-	fputs("  -i, --input=id        control the input device (if no id given use default set)\n", out);
-	fputs("  -o, --output=id       control the output device (if no id given use default set)\n", out);
-
-	fputs("\n Commands:\n", out);
-	fputs("  list-defaults         list default set input/output devices\n", out);
-	fputs("  list-applications     list available applications\n", out);
-	fputs("  list-inputs           list available input devices\n", out);
-	fputs("  list-outputs          list available output devices\n", out);
-	fputs("  set-default           sets the selected input/output as default\n", out);
-	fputs("  get-volume            get volume\n", out);
-	fputs("  set-volume VALUE      set volume\n", out);
-	fputs("  get-balance           get balance for output\n", out);
-	fputs("  set-balance VALUE     set balance for output, pass double between -1.0 to 1.0\n", out);
-	fputs("  increase VALUE        increase volume\n", out);
-	fputs("  decrease VALUE        decrease volume\n", out);
-	fputs("  mute                  mute\n", out);
-	fputs("  unmute                unmute\n", out);
-	fputs("  is-muted              check if muted\n", out);
-	fputs("  toggle                toggle mute\n", out);
-
-	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
-}
-
-enum action string_to_verb(const char *string)
-{
-	if(strcmp(string, "list-defaults") == 0)
-		return ACTION_LISTDEFAULTS;
-	else if(strcmp(string, "list-applications") == 0)
-		return ACTION_LISTAPPLICATIONS;
-	else if(strcmp(string, "list-inputs") == 0)
-		return ACTION_LISTINPUT;
-	else if(strcmp(string, "list-outputs") == 0)
-		return ACTION_LISTOUTPUT;
-	else if(strcmp(string, "vset-default") == 0)
-		return ACTION_SETDEFAULT;
-	else if(strcmp(string, "get-volume") == 0)
-		return ACTION_GETVOL;
-	else if(strcmp(string, "set-volume") == 0)
-		return ACTION_SETVOL;
-	else if(strcmp(string, "get-balance") == 0)
-		return ACTION_GETBAL;
-	else if(strcmp(string, "set-balance") == 0)
-		return ACTION_SETBAL;
-	else if(strcmp(string, "increase") == 0)
-		return ACTION_INCREASE;
-	else if(strcmp(string, "decrease") == 0)
-		return ACTION_DECREASE;
-	else if(strcmp(string, "mute") == 0)
-		return ACTION_MUTE;
-	else if(strcmp(string, "unmute") == 0)
-		return ACTION_UNMUTE;
-	else if(strcmp(string, "is-muted") == 0)
-		return ACTION_ISMUTED;
-	else if(strcmp(string, "toggle") == 0)
-		return ACTION_TOGGLE;
-
-	return ACTION_INVALID;
-}
-
-int xstrtof(const char *str, float *out)
-{
-	char *end = NULL;
-
-	if (str == NULL || *str == '\0')
-		return -1;
-	errno = 0;
-
-	*out = strtof(str, &end);
-	if (errno || str == end || (end && *end))
-		return -1;
-
-	return 0;
-}
-
-
-int xstrtol(const char *str, long *out)
-{
-	char *end = NULL;
-
-		if (str == NULL || *str == '\0')
-			return -1;
-		errno = 0;
-
-		*out = strtol(str, &end, 10);
-		if (errno || str == end || (end && *end))
-			return -1;
-
-		return 0;
 }
 
 /* vim: set noet ts=2 sw=2: */

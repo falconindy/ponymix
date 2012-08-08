@@ -161,45 +161,52 @@ int main(int argc, char *argv[])
 			break;
 	}
 
-	if (use == TYPE_INVALID)
-		errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
 
-	if (use == TYPE_STREAM && stream == NULL) {
-		errx(EXIT_FAILURE, "controlling applications needs an ID");
-	} else if (use == TYPE_STREAM && stream != NULL) {
-		long idx;
-		int r = xstrtol(stream, &idx);
-		if (r < 0)
-			errx(EXIT_FAILURE, "invalid ID: %s", stream);
-		else
-			get_stream_by_index(&pulse, (uint32_t)idx);
+	long idx;
+	int r;
+	switch (use) {
+		case TYPE_INVALID:
+			errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
+			break;
+		case TYPE_STREAM:
+			if (stream == NULL)
+				errx(EXIT_FAILURE, "controlling applications needs an ID");
 
-		if (pulse.source == NULL)
-			errx(EXIT_FAILURE, "application not found with ID: %s", stream);
-	} else if (use == TYPE_SOURCE && source == NULL) {
-		get_default_source(&pulse);
-	} else if (use == TYPE_SOURCE && source != NULL) {
-		long idx;
-		int r = xstrtol(source, &idx);
-		if (r < 0)
-			errx(EXIT_FAILURE, "invalid ID: %s", source);
-		else
-			get_source_by_index(&pulse, (uint32_t)idx);
+			r = xstrtol(stream, &idx);
+			if (r < 0)
+				errx(EXIT_FAILURE, "invalid ID: %s", stream);
+			else
+				get_stream_by_index(&pulse, (uint32_t)idx);
 
-		if(pulse.source == NULL)
-			errx(EXIT_FAILURE, "input not found with ID: %s", source);
-	} else if(use == TYPE_SINK && sink == NULL) {
-		get_default_sink(&pulse);
-	} else if(use == TYPE_SINK && sink != NULL) {
-		long idx;
-		int r = xstrtol(sink, &idx);
-		if (r < 0)
-			errx(EXIT_FAILURE, "invalid ID: %s", sink);
-		else
-			get_sink_by_index(&pulse, (uint32_t)idx);
+			if (pulse.source == NULL)
+				errx(EXIT_FAILURE, "application not found with ID: %s", stream);
+			break;
+		case TYPE_SOURCE:
+			if (!source)
+				get_default_source(&pulse);
 
-		if (pulse.source == NULL)
-			errx(EXIT_FAILURE, "output not found with ID: %s", sink);
+			r = xstrtol(source, &idx);
+			if (r < 0)
+				errx(EXIT_FAILURE, "invalid ID: %s", source);
+			else
+				get_source_by_index(&pulse, (uint32_t)idx);
+
+			if(pulse.source == NULL)
+				errx(EXIT_FAILURE, "input not found with ID: %s", source);
+			break;
+		case TYPE_SINK:
+			if(sink == NULL)
+				get_default_sink(&pulse);
+
+			r = xstrtol(sink, &idx);
+			if (r < 0)
+				errx(EXIT_FAILURE, "invalid ID: %s", sink);
+			else
+				get_sink_by_index(&pulse, (uint32_t)idx);
+
+			if (pulse.source == NULL)
+				errx(EXIT_FAILURE, "output not found with ID: %s", sink);
+			break;
 	}
 
 	switch (verb) {
@@ -247,29 +254,29 @@ exit:
 
 void usage(FILE *out)
 {
-	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
-	fputs("\nOptions:\n", out);
+	fprintf(out, "Usage: %s [options] <command>...\n", program_invocation_short_name);
+	fputs("\n Options:\n", out);
 	fputs("  -h, --help,           display this help and exit\n", out);
 	fputs("  -a  --application=id  control a application\n", out);
 	fputs("  -i, --input=id        control the input device (if no id given use default set)\n", out);
 	fputs("  -o, --output=id       control the output device (if no id given use default set)\n", out);
 
-	fputs("\nCommands:\n", out);
-	fputs("  list-defaults      list default set input/output devices\n", out);
-	fputs("  list-applications  list available applications\n", out);
-	fputs("  list-inputs        list available input devices\n", out);
-	fputs("  list-outputs       list available output devices\n", out);
-	fputs("  set-default        sets the selected input/output as default\n", out);
-	fputs("  get-volume         get volume\n", out);
-	fputs("  set-volume VALUE   set volume\n", out);
-	fputs("  get-balance        get balance for output\n", out);
-	fputs("  set-balance VALUE  set balance for output, pass double between -1.0 to 1.0\n", out);
-	fputs("  increase VALUE     increase volume\n", out);
-	fputs("  decrease VALUE     decrease volume\n", out);
-	fputs("  mute               mute\n", out);
-	fputs("  unmute             unmute\n", out);
-	fputs("  is-muted           check if muted\n", out);
-	fputs("  toggle             toggle mute\n", out);
+	fputs("\n Commands:\n", out);
+	fputs("  list-defaults         list default set input/output devices\n", out);
+	fputs("  list-applications     list available applications\n", out);
+	fputs("  list-inputs           list available input devices\n", out);
+	fputs("  list-outputs          list available output devices\n", out);
+	fputs("  set-default           sets the selected input/output as default\n", out);
+	fputs("  get-volume            get volume\n", out);
+	fputs("  set-volume VALUE      set volume\n", out);
+	fputs("  get-balance           get balance for output\n", out);
+	fputs("  set-balance VALUE     set balance for output, pass double between -1.0 to 1.0\n", out);
+	fputs("  increase VALUE        increase volume\n", out);
+	fputs("  decrease VALUE        decrease volume\n", out);
+	fputs("  mute                  mute\n", out);
+	fputs("  unmute                unmute\n", out);
+	fputs("  is-muted              check if muted\n", out);
+	fputs("  toggle                toggle mute\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }

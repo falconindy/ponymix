@@ -52,12 +52,12 @@ struct source_t {
 	struct {
 		pa_operation *(* op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
 		pa_operation *(* op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
-		void (* op_print)(struct source_t *);
 	} ops;
 
 	uint32_t idx;
 	const char *name;
 	const char *desc;
+	const char *pp_name;
 	const pa_channel_map *map;
 	pa_cvolume volume;
 	struct pa_proplist *proplist;

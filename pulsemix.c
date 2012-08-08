@@ -58,18 +58,16 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op);
 static struct source_t *stream_new(const pa_sink_input_info *stream_info);
 static struct source_t *sink_new(const pa_sink_info *sink_info);
 static struct source_t *source_new(const pa_source_info *source_info);
-static void print_stream(struct source_t *stream);
-static void print_sink(struct source_t *sink);
 static void print_source(struct source_t *source);
 
 /* CALLBAKCS {{{ */
-void success_cb(pa_context UNUSED *c, int success, void *raw)
+static void success_cb(pa_context UNUSED *c, int success, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 	pulse->success = success;
 }
 
-void state_cb(pa_context UNUSED *c, void *raw)
+static void state_cb(pa_context UNUSED *c, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 
@@ -89,7 +87,7 @@ void state_cb(pa_context UNUSED *c, void *raw)
 	}
 }
 
-void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, void *raw)
+static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 	struct source_t *s, *stream;
@@ -107,7 +105,7 @@ void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, v
 	}
 }
 
-void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
+static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 	struct source_t *s, *source;
@@ -125,7 +123,7 @@ void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void 
 	}
 }
 
-void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, void *raw)
+static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
 	struct source_t *s, *sink;
@@ -143,25 +141,99 @@ void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, void *raw
 	}
 }
 
-void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
+static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
 {
 	const char **source_name = (const char **)raw;
 	*source_name = i->default_source_name;
 }
 
-void sink_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
+static void sink_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
 {
 	const char **sink_name = (const char **)raw;
 	*sink_name = i->default_sink_name;
 }
 /* }}} */
 
+static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
+{
+	while (pa_operation_get_state(op) == PA_OPERATION_RUNNING)
+		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
+}
+
+static struct source_t *stream_new(const pa_sink_input_info *stream_info)
+{
+	struct source_t *stream = calloc(1, sizeof(struct source_t));
+	stream->t = TYPE_STREAM;
+
+	stream->idx            = stream_info->index;
+	stream->name           = stream_info->name;
+	stream->pp_name        = "Application";
+	stream->proplist       = stream_info->proplist;
+	stream->desc           = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
+	stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
+	stream->mute           = stream_info->mute;
+	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
+
+	stream->ops.op_mute  = pa_context_set_sink_input_mute;
+	stream->ops.op_vol   = pa_context_set_sink_input_volume;
+
+	return stream;
+}
+
+static struct source_t *sink_new(const pa_sink_info *sink_info)
+{
+	struct source_t *sink = calloc(1, sizeof(struct source_t));
+	sink->t = TYPE_SINK;
+
+	sink->idx            = sink_info->index;
+	sink->name           = sink_info->name;
+	sink->pp_name        = "Output";
+	sink->desc           = sink_info->description;
+	sink->map            = &sink_info->channel_map;
+	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100) / PA_VOLUME_NORM);
+	sink->mute           = sink_info->mute;
+	sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
+	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
+
+	sink->ops.op_mute  = pa_context_set_sink_mute_by_index;
+	sink->ops.op_vol   = pa_context_set_sink_volume_by_index;
+
+	return sink;
+}
+
+static struct source_t *source_new(const pa_source_info *source_info)
+{
+	struct source_t *source = calloc(1, sizeof(struct source_t));
+	source->t = TYPE_SOURCE;
+
+	source->idx            = source_info->index;
+	source->name           = source_info->name;
+	source->pp_name        = "Input";
+	source->desc           = source_info->description;
+	source->map            = &source_info->channel_map;
+	source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
+	source->mute           = source_info->mute;
+	source->balance        = 0.0f;
+	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
+
+	source->ops.op_mute  = pa_context_set_source_mute_by_index;
+	source->ops.op_vol   = pa_context_set_source_volume_by_index;
+
+	return source;
+}
+
+static void print_source(struct source_t *source)
+{
+	char *mute = source->mute ? "[Muted]" : "";
+	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->volume_percent, mute);
+}
+
 void print_sources(struct pulseaudio_t *pulse)
 {
 	struct source_t *source = pulse->source;
 
 	while (source) {
-		source->ops.op_print(source);
+		print_source(source);
 		source = source->next_source;
 	}
 }
@@ -203,74 +275,6 @@ void pulse_deinit(struct pulseaudio_t *pulse)
 		free(pulse->source);
 		pulse->source = source;
 	}
-}
-
-void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
-{
-	while (pa_operation_get_state(op) == PA_OPERATION_RUNNING)
-		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
-}
-
-struct source_t *stream_new(const pa_sink_input_info *stream_info)
-{
-	struct source_t *stream = calloc(1, sizeof(struct source_t));
-	stream->t = TYPE_STREAM;
-
-	stream->idx            = stream_info->index;
-	stream->name           = stream_info->name;
-	stream->proplist       = stream_info->proplist;
-	stream->desc           = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
-	stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
-	stream->mute           = stream_info->mute;
-	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
-
-	stream->ops.op_mute  = pa_context_set_sink_input_mute;
-	stream->ops.op_vol   = pa_context_set_sink_input_volume;
-	stream->ops.op_print = print_stream;
-
-	return stream;
-}
-
-struct source_t *sink_new(const pa_sink_info *sink_info)
-{
-	struct source_t *sink = calloc(1, sizeof(struct source_t));
-	sink->t = TYPE_SINK;
-
-	sink->idx            = sink_info->index;
-	sink->name           = sink_info->name;
-	sink->desc           = sink_info->description;
-	sink->map            = &sink_info->channel_map;
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100) / PA_VOLUME_NORM);
-	sink->mute           = sink_info->mute;
-	sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
-	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
-
-	sink->ops.op_mute  = pa_context_set_sink_mute_by_index;
-	sink->ops.op_vol   = pa_context_set_sink_volume_by_index;
-	sink->ops.op_print = print_sink;
-
-	return sink;
-}
-
-struct source_t *source_new(const pa_source_info *source_info)
-{
-	struct source_t *source = calloc(1, sizeof(struct source_t));
-	source->t = TYPE_SOURCE;
-
-	source->idx            = source_info->index;
-	source->name           = source_info->name;
-	source->desc           = source_info->description;
-	source->map            = &source_info->channel_map;
-	source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
-	source->mute           = source_info->mute;
-	source->balance        = 0.0f;
-	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
-
-	source->ops.op_mute  = pa_context_set_source_mute_by_index;
-	source->ops.op_vol   = pa_context_set_source_volume_by_index;
-	source->ops.op_print = print_source;
-
-	return source;
 }
 
 void clean_source_t(struct pulseaudio_t *pulse)
@@ -358,24 +362,6 @@ void get_sources(struct pulseaudio_t *pulse)
 	pa_operation *op = pa_context_get_source_info_list(pulse->cxt, source_add_cb, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-}
-
-void print_stream(struct source_t *stream)
-{
-	char *mute = stream->mute ? "true" : "false";
-	printf("Application ID: %2d\n %s : %s\n Volume: %d%% Muted: %s\n", stream->idx, stream->name, stream->desc, stream->volume_percent, mute);
-}
-
-void print_sink(struct source_t *sink)
-{
-	char *mute = sink->mute ? "true" : "false";
-	printf("Output ID:%2d\n %s\n %s\n Volume: %d%% Balance: %.1f Muted: %s\n", sink->idx, sink->name, sink->desc, sink->volume_percent, sink->balance, mute);
-}
-
-void print_source(struct source_t *source)
-{
-	char *mute = source->mute ? "true" : "false";
-	printf("Input ID: %2d\n %s\n %s\n Volume: %d%% Muted: %s\n", source->idx, source->name, source->desc, source->volume_percent, mute);
 }
 
 void set_default(struct pulseaudio_t *pulse)

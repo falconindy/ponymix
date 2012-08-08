@@ -411,11 +411,11 @@ void get_balance(struct pulseaudio_t *pulse)
 
 int set_balance(struct pulseaudio_t *pulse, float b)
 {
-	if(pulse->source->t != TYPE_STREAM)
+	if(pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
 	if(pa_channel_map_valid(pulse->source->map) == 0)
-		errx(EXIT_FAILURE, "cant set balance on that input device.");
+		errx(EXIT_FAILURE, "cant set balance on that output device.");
 
 	b = CLAMP(b, -1.0f, 1.0f);
 	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);

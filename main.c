@@ -136,24 +136,32 @@ int main(int argc, char *argv[])
 	if (pulse_connect(&pulse) != 0)
 		return EXIT_FAILURE;
 
-	if (verb == ACTION_LISTDEFAULTS) {
-		get_default_source(&pulse);
-		print_sources(&pulse);
-		clean_source_t(&pulse);
-		get_default_sink(&pulse);
-		print_sources(&pulse);
-	} else if (verb == ACTION_LISTAPPLICATIONS) {
-		get_streams(&pulse);
-		print_sources(&pulse);
-	} else if (verb == ACTION_LISTINPUT) {
-		get_sources(&pulse);
-		print_sources(&pulse);
-	} else if (verb == ACTION_LISTOUTPUT) {
-		get_sinks(&pulse);
-		print_sources(&pulse);
-	} else if (use == TYPE_INVALID) {
-		errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
+	switch (verb) {
+		case ACTION_LISTDEFAULTS:
+			get_default_source(&pulse);
+			print_sources(&pulse);
+			clean_source_t(&pulse);
+			get_default_sink(&pulse);
+			print_sources(&pulse);
+			goto exit;
+		case ACTION_LISTAPPLICATIONS:
+			get_streams(&pulse);
+			print_sources(&pulse);
+			goto exit;
+		case ACTION_LISTINPUT:
+			get_sources(&pulse);
+			print_sources(&pulse);
+			goto exit;
+		case ACTION_LISTOUTPUT:
+			get_sinks(&pulse);
+			print_sources(&pulse);
+			goto exit;
+		default:
+			break;
 	}
+
+	if (use == TYPE_INVALID)
+		errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
 
 	if (use == TYPE_STREAM && stream == NULL) {
 		errx(EXIT_FAILURE, "controlling applications needs an ID");
@@ -193,7 +201,7 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "output not found with ID: %s", sink);
 	}
 
-	switch(verb) {
+	switch (verb) {
 		case ACTION_SETDEFAULT:
 			set_default(&pulse);
 			break;
@@ -228,6 +236,7 @@ int main(int argc, char *argv[])
 			break;
 	}
 
+exit:
 	pulse_deinit(&pulse);
 	return rc;
 }

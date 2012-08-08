@@ -287,10 +287,10 @@ int main(int argc, char *argv[])
 			rc = set_balance(&pulse, value.l);
 			break;
 		case ACTION_INCREASE:
-			rc = set_volume(&pulse, pulse.source->simple_volume + value.l);
+			rc = set_volume(&pulse, pulse.source->volume + value.l);
 			break;
 		case ACTION_DECREASE:
-			rc = set_volume(&pulse, pulse.source->simple_volume - value.l);
+			rc = set_volume(&pulse, pulse.source->volume - value.l);
 			break;
 		case ACTION_MUTE:
 			rc = set_mute(&pulse, 1);

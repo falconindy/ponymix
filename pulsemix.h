@@ -53,11 +53,12 @@ struct source_t {
 	char *name;
 	char *desc;
 	const char *pp_name;
-	pa_channel_map map;
-	pa_cvolume volume;
-	int simple_volume;
+	int volume;
+	int balance;
 	int mute;
-	float balance;
+
+	pa_channel_map map;
+	pa_cvolume cvolume;
 
 	pa_operation *(*op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
 	pa_operation *(*op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);

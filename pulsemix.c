@@ -154,6 +154,11 @@ static int calc_volume(const pa_cvolume *cvolume)
 	return (int)((double)pa_cvolume_avg(cvolume) / PA_VOLUME_NORM * 100);
 }
 
+static int calc_balance(const pa_cvolume *volume, const pa_channel_map *map)
+{
+	return (int)((double)pa_cvolume_get_balance(volume, map) * 100);
+}
+
 static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 {
 	struct source_t *stream = calloc(1, sizeof(struct source_t));
@@ -164,10 +169,11 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 	stream->pp_name  = "Application";
 	stream->desc     = strdup(pa_proplist_gets(stream_info->proplist, PA_PROP_APPLICATION_NAME));
 	stream->mute     = stream_info->mute;
-	memcpy(&stream->map,    &stream_info->channel_map, sizeof(pa_channel_map));
-	memcpy(&stream->volume, &stream_info->volume,      sizeof(pa_cvolume));
+	memcpy(&stream->map,     &stream_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&stream->cvolume, &stream_info->volume,      sizeof(pa_cvolume));
 
-	stream->simple_volume = calc_volume(&stream->volume);
+	stream->volume  = calc_volume(&stream->cvolume);
+	stream->balance = calc_balance(&stream->cvolume, &stream->map);
 
 	stream->op_mute = pa_context_set_sink_input_mute;
 	stream->op_vol  = pa_context_set_sink_input_volume;
@@ -185,11 +191,11 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 	sink->pp_name = "Output";
 	sink->desc    = strdup(sink_info->description);
 	sink->mute    = sink_info->mute;
-	sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
-	memcpy(&sink->map,    &sink_info->channel_map, sizeof(pa_channel_map));
-	memcpy(&sink->volume, &sink_info->volume,      sizeof(pa_cvolume));
+	memcpy(&sink->map,     &sink_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&sink->cvolume, &sink_info->volume,      sizeof(pa_cvolume));
 
-	sink->simple_volume = calc_volume(&sink->volume);
+	sink->volume  = calc_volume(&sink->cvolume);
+	sink->balance = calc_balance(&sink->cvolume, &sink->map);
 
 	sink->op_mute = pa_context_set_sink_mute_by_index;
 	sink->op_vol  = pa_context_set_sink_volume_by_index;
@@ -207,10 +213,11 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->pp_name = "Input";
 	source->desc    = strdup(source_info->description);
 	source->mute    = source_info->mute;
-	memcpy(&source->map,    &source_info->channel_map, sizeof(pa_channel_map));
-	memcpy(&source->volume, &source_info->volume,      sizeof(pa_cvolume));
+	memcpy(&source->map,     &source_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&source->cvolume, &source_info->volume,      sizeof(pa_cvolume));
 
-	source->simple_volume = calc_volume(&source->volume);
+	source->volume  = calc_volume(&source->cvolume);
+	source->balance = calc_balance(&source->cvolume, &source->map);
 
 	source->op_mute = pa_context_set_source_mute_by_index;
 	source->op_vol  = pa_context_set_source_volume_by_index;
@@ -221,7 +228,7 @@ static struct source_t *source_new(const pa_source_info *source_info)
 static void print_source(struct source_t *source)
 {
 	char *mute = source->mute ? "[Muted]" : "";
-	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->simple_volume, mute);
+	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->volume, mute);
 }
 
 void print_sources(struct pulseaudio_t *pulse)
@@ -380,7 +387,7 @@ void set_default(struct pulseaudio_t *pulse)
 
 void get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%d\n", pulse->source->simple_volume);
+	printf("%d\n", pulse->source->volume);
 }
 
 int set_volume(struct pulseaudio_t *pulse, int v)
@@ -388,7 +395,7 @@ int set_volume(struct pulseaudio_t *pulse, int v)
 	pa_cvolume *vol = NULL;
 
 	v = CLAMP(v, 0, 150);
-	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels, (int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
+	vol = pa_cvolume_set(&pulse->source->cvolume, pulse->source->cvolume.channels, (int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
@@ -404,19 +411,16 @@ int set_volume(struct pulseaudio_t *pulse, int v)
 
 void get_balance(struct pulseaudio_t *pulse)
 {
-	if (pulse->source->t != TYPE_SINK)
-		errx(EXIT_FAILURE, "error can only get balance on output devices");
-
-	printf("%d\n", (int)(pulse->source->balance * 100));
+	printf("%d\n", pulse->source->balance);
 }
 
 int set_balance(struct pulseaudio_t *pulse, int b)
 {
 	if (pa_channel_map_valid(&pulse->source->map) == 0)
-		errx(EXIT_FAILURE, "can't set balance on that output device.");
+		errx(EXIT_FAILURE, "can't set balance on that device.");
 
 	b = CLAMP(b, -100, 100);
-	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, &pulse->source->map, b / 100);
+	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->cvolume, &pulse->source->map, b / 100.0);
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 

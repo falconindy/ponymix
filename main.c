@@ -102,7 +102,7 @@ enum action string_to_verb(const char *string)
 		return ACTION_LISTINPUT;
 	else if (strcmp(string, "list-outputs") == 0)
 		return ACTION_LISTOUTPUT;
-	else if (strcmp(string, "vset-default") == 0)
+	else if (strcmp(string, "set-default") == 0)
 		return ACTION_SETDEFAULT;
 	else if (strcmp(string, "get-volume") == 0)
 		return ACTION_GETVOL;

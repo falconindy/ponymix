@@ -174,8 +174,8 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 	stream->mute           = stream_info->mute;
 	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
 
-	stream->ops.op_mute  = pa_context_set_sink_input_mute;
-	stream->ops.op_vol   = pa_context_set_sink_input_volume;
+	stream->op_mute = pa_context_set_sink_input_mute;
+	stream->op_vol  = pa_context_set_sink_input_volume;
 
 	return stream;
 }
@@ -195,8 +195,8 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 	sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
 
-	sink->ops.op_mute  = pa_context_set_sink_mute_by_index;
-	sink->ops.op_vol   = pa_context_set_sink_volume_by_index;
+	sink->op_mute = pa_context_set_sink_mute_by_index;
+	sink->op_vol  = pa_context_set_sink_volume_by_index;
 
 	return sink;
 }
@@ -216,8 +216,8 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->balance        = 0.0f;
 	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
 
-	source->ops.op_mute  = pa_context_set_source_mute_by_index;
-	source->ops.op_vol   = pa_context_set_source_volume_by_index;
+	source->op_mute = pa_context_set_source_mute_by_index;
+	source->op_vol  = pa_context_set_source_volume_by_index;
 
 	return source;
 }
@@ -402,7 +402,7 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 
 	v = CLAMP(v, 0, 150);
 	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels,(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
-	pa_operation *op = pulse->source->ops.op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 
@@ -433,7 +433,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 
 	if(pa_channel_map_valid(pulse->source->map) != 0) {
 		pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
-		pa_operation *op = pulse->source->ops.op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+		pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 		pulse_async_wait(pulse, op);
 
 		if(pulse->success)
@@ -454,7 +454,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 
 int set_mute(struct pulseaudio_t *pulse, int mute)
 {
-	pa_operation *op = pulse->source->ops.op_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
+	pa_operation *op = pulse->source->op_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 

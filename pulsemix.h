@@ -49,11 +49,6 @@ enum type {
 struct source_t {
 	enum type t;
 
-	struct {
-		pa_operation *(* op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
-		pa_operation *(* op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
-	} ops;
-
 	uint32_t idx;
 	const char *name;
 	const char *desc;
@@ -64,6 +59,9 @@ struct source_t {
 	int volume_percent;
 	int mute;
 	float balance;
+
+	pa_operation *(*op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
+	pa_operation *(*op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
 
 	struct source_t *next_source;
 };

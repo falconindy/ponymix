@@ -149,12 +149,12 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
-static int calc_volume(const pa_cvolume *cvolume)
+static inline int calc_volume(const pa_cvolume *cvolume)
 {
 	return (int)((double)pa_cvolume_avg(cvolume) / PA_VOLUME_NORM * 100);
 }
 
-static int calc_balance(const pa_cvolume *volume, const pa_channel_map *map)
+static inline int calc_balance(const pa_cvolume *volume, const pa_channel_map *map)
 {
 	return (int)((double)pa_cvolume_get_balance(volume, map) * 100);
 }
@@ -228,7 +228,7 @@ static struct source_t *source_new(const pa_source_info *source_info)
 static void print_source(struct source_t *source)
 {
 	char *mute = source->mute ? "[Muted]" : "";
-	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->volume, mute);
+	printf("%s ID: %d\n  %s\n  %s\n  Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->volume, mute);
 }
 
 void print_sources(struct pulseaudio_t *pulse)

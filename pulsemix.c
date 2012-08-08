@@ -183,10 +183,10 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 	sink->name    = strdup(sink_info->name);
 	sink->pp_name = "Output";
 	sink->desc    = strdup(sink_info->description);
-	sink->map     = &sink_info->channel_map;
 	sink->mute    = sink_info->mute;
 	sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
-	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
+	memcpy(&sink->map,    &sink_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&sink->volume, &sink_info->volume,      sizeof(pa_cvolume));
 
 	sink->simple_volume = calc_volume(&sink->volume);
 
@@ -205,9 +205,9 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->name    = strdup(source_info->name);
 	source->pp_name = "Input";
 	source->desc    = strdup(source_info->description);
-	source->map     = &source_info->channel_map;
 	source->mute    = source_info->mute;
-	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
+	memcpy(&source->map,    &source_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&source->volume, &source_info->volume,      sizeof(pa_cvolume));
 
 	source->simple_volume = calc_volume(&source->volume);
 
@@ -414,11 +414,11 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 	if (pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
-	if (pa_channel_map_valid(pulse->source->map) == 0)
+	if (pa_channel_map_valid(&pulse->source->map) == 0)
 		errx(EXIT_FAILURE, "cant set balance on that output device.");
 
 	b = CLAMP(b, -1.0f, 1.0f);
-	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
+	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, &pulse->source->map, b);
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 

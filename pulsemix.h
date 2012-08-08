@@ -53,7 +53,7 @@ struct source_t {
 	char *name;
 	char *desc;
 	const char *pp_name;
-	const pa_channel_map *map;
+	pa_channel_map map;
 	pa_cvolume volume;
 	int simple_volume;
 	int mute;

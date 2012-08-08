@@ -7,28 +7,7 @@ this fork focus on implenting the functionality pavucontrol has, per application
 
 ###Usage
 
-* pulsemix [options] [command]..  
-* and if no options are given it will control the default sink/output
-
-* Options:
-    * -h, --help,          
-    * -s, --stream [index]
-    * -o, --source
-
-* Commands:
-    * list
-    * list-sources
-    * list-streams
-    * get-volume
-    * set-volume VALUE
-    * get-balance
-    * set-balance VALUE
-       * to set balance for sink, pass double -- before the negative number ex( -- -0.5) range is between -1.0 to 1.0 and 0 being centered
-    * increase VALUE
-    * decrease VALUE
-    * mute
-    * unmute
-    * toggle
+will later add --help output here and explain it briefly, for time being just pulsemix --help
 
 ###Feature completeness
 

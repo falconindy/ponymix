@@ -90,7 +90,7 @@ static void state_cb(pa_context UNUSED *c, void *raw)
 static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct source_t *s, *stream;
+	struct source_t *stream;
 
 	if (eol)
 		return;
@@ -99,8 +99,7 @@ static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int
 	if (pulse->source == NULL)
 		pulse->source = stream;
 	else {
-		s = pulse->source;
-		stream->next_source = s;
+		stream->next_source = pulse->source;
 		pulse->source = stream;
 	}
 }
@@ -108,7 +107,7 @@ static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int
 static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct source_t *s, *source;
+	struct source_t *source;
 
 	if (eol)
 		return;
@@ -117,8 +116,7 @@ static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol
 	if (pulse->source == NULL)
 		pulse->source = source;
 	else {
-		s = pulse->source;
-		source->next_source = s;
+		source->next_source = pulse->source;
 		pulse->source = source;
 	}
 }
@@ -126,7 +124,7 @@ static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol
 static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct source_t *s, *sink;
+	struct source_t *sink;
 
 	if (eol)
 		return;
@@ -135,8 +133,7 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, vo
 	if (pulse->source == NULL)
 		pulse->source = sink;
 	else {
-		s = pulse->source;
-		sink->next_source = s;
+		sink->next_source = pulse->source;
 		pulse->source = sink;
 	}
 }

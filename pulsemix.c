@@ -55,6 +55,7 @@ static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *
 static void sink_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw);
 
 static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op);
+static int calc_volume(const pa_cvolume *cvolume);
 static struct source_t *stream_new(const pa_sink_input_info *stream_info);
 static struct source_t *sink_new(const pa_sink_info *sink_info);
 static struct source_t *source_new(const pa_source_info *source_info);
@@ -148,6 +149,11 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
+static int calc_volume(const pa_cvolume *cvolume)
+{
+	return (int)((double)pa_cvolume_avg(cvolume) / PA_VOLUME_NORM * 100);
+}
+
 static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 {
 	struct source_t *stream = calloc(1, sizeof(struct source_t));
@@ -160,7 +166,7 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 	stream->mute     = stream_info->mute;
 	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
 
-	stream->simple_volume = (int)((double)pa_cvolume_avg(&stream->volume) / PA_VOLUME_NORM * 100);
+	stream->simple_volume = calc_volume(&stream->volume);
 
 	stream->op_mute = pa_context_set_sink_input_mute;
 	stream->op_vol  = pa_context_set_sink_input_volume;
@@ -182,7 +188,7 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 	sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
 
-	sink->simple_volume = (int)((double)pa_cvolume_avg(&sink->volume) / PA_VOLUME_NORM * 100);
+	sink->simple_volume = calc_volume(&sink->volume);
 
 	sink->op_mute = pa_context_set_sink_mute_by_index;
 	sink->op_vol  = pa_context_set_sink_volume_by_index;
@@ -203,7 +209,7 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->mute    = source_info->mute;
 	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
 
-	source->simple_volume = (int)((double)pa_cvolume_avg(&source->volume) / PA_VOLUME_NORM * 100);
+	source->simple_volume = calc_volume(&source->volume);
 
 	source->op_mute = pa_context_set_source_mute_by_index;
 	source->op_vol  = pa_context_set_source_volume_by_index;

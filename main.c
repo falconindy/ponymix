@@ -36,6 +36,8 @@
 
 #include "pulsemix.h"
 
+#define STREQ(x,y) (strcmp((x),(y)) == 0)
+
 enum action {
 	ACTION_LISTDEFAULTS = 0,
 	ACTION_LISTAPPLICATIONS,
@@ -94,35 +96,35 @@ int xstrtol(const char *str, long *out)
 
 enum action string_to_verb(const char *string)
 {
-	if (strcmp(string, "list-defaults") == 0)
+	if (STREQ(string, "list-defaults"))
 		return ACTION_LISTDEFAULTS;
-	else if (strcmp(string, "list-applications") == 0)
+	else if (STREQ(string, "list-applications"))
 		return ACTION_LISTAPPLICATIONS;
-	else if (strcmp(string, "list-inputs") == 0)
+	else if (STREQ(string, "list-inputs"))
 		return ACTION_LISTINPUT;
-	else if (strcmp(string, "list-outputs") == 0)
+	else if (STREQ(string, "list-outputs"))
 		return ACTION_LISTOUTPUT;
-	else if (strcmp(string, "set-default") == 0)
+	else if (STREQ(string, "set-default"))
 		return ACTION_SETDEFAULT;
-	else if (strcmp(string, "get-volume") == 0)
+	else if (STREQ(string, "get-volume"))
 		return ACTION_GETVOL;
-	else if (strcmp(string, "set-volume") == 0)
+	else if (STREQ(string, "set-volume"))
 		return ACTION_SETVOL;
-	else if (strcmp(string, "get-balance") == 0)
+	else if (STREQ(string, "get-balance"))
 		return ACTION_GETBAL;
-	else if (strcmp(string, "set-balance") == 0)
+	else if (STREQ(string, "set-balance"))
 		return ACTION_SETBAL;
-	else if (strcmp(string, "increase") == 0)
+	else if (STREQ(string, "increase"))
 		return ACTION_INCREASE;
-	else if (strcmp(string, "decrease") == 0)
+	else if (STREQ(string, "decrease"))
 		return ACTION_DECREASE;
-	else if (strcmp(string, "mute") == 0)
+	else if (STREQ(string, "mute"))
 		return ACTION_MUTE;
-	else if (strcmp(string, "unmute") == 0)
+	else if (STREQ(string, "unmute"))
 		return ACTION_UNMUTE;
-	else if (strcmp(string, "is-muted") == 0)
+	else if (STREQ(string, "is-muted"))
 		return ACTION_ISMUTED;
-	else if (strcmp(string, "toggle") == 0)
+	else if (STREQ(string, "toggle"))
 		return ACTION_TOGGLE;
 
 	return ACTION_INVALID;

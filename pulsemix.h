@@ -28,72 +28,48 @@
 
 #include <pulse/pulseaudio.h>
 
-enum action 
-{
-    ACTION_LISTDEFAULTS = 0,
-    ACTION_LISTAPPLICATIONS,
-    ACTION_LISTINPUT,
-    ACTION_LISTOUTPUT,
-    ACTION_SETDEFAULT,
-    ACTION_GETVOL,
-    ACTION_SETVOL,
-    ACTION_GETBAL,
-    ACTION_SETBAL,
-    ACTION_INCREASE,
-    ACTION_DECREASE,
-    ACTION_MUTE,
-    ACTION_UNMUTE,
-    ACTION_TOGGLE,
-    ACTION_INVALID
+union arg_t {
+	long l;
+	char *c;
+	float f;
 };
 
-union arg_t 
-{
-    long l;
-    char *c; 
-    float f;
+enum connectstate {
+	STATE_CONNECTING = 0,
+	STATE_CONNECTED,
+	STATE_ERROR
 };
 
-enum connectstate 
-{
-    STATE_CONNECTING = 0,
-    STATE_CONNECTED,
-    STATE_ERROR
+enum type {
+	TYPE_INVALID = 0,
+	TYPE_SINK,
+	TYPE_SOURCE,
+	TYPE_STREAM
 };
 
-enum type 
-{
-    TYPE_INVALID = 0,
-    TYPE_SINK,
-    TYPE_SOURCE,
-    TYPE_STREAM
+struct source_t {
+	uint32_t idx;
+	const char *name;
+	const char *desc;
+	const pa_channel_map *map;
+	pa_cvolume volume;
+	struct pa_proplist *proplist;
+	int volume_percent;
+	int mute;
+	float balance;
+	enum type t;
+
+	struct source_t *next_source;
 };
 
-struct source_t 
-{
-    uint32_t idx;
-    const char *name;
-    const char *desc;
-    const pa_channel_map *map;
-    pa_cvolume volume;
-    struct pa_proplist *proplist;
-    int volume_percent;
-    int mute;
-    float balance;
-    enum type t;
+struct pulseaudio_t {
+	pa_context *cxt;
+	pa_mainloop *mainloop;
+	pa_mainloop_api *mainloop_api;
+	enum connectstate state;
+	int success;
 
-    struct source_t *next_source;
-};
-
-struct pulseaudio_t 
-{
-    pa_context *cxt;
-    pa_mainloop *mainloop;
-    pa_mainloop_api *mainloop_api;
-    enum connectstate state;
-    int success;
-
-    struct source_t *source;
+	struct source_t *source;
 };
 
 void pulse_init(struct pulseaudio_t *pulse, const char *clientname);
@@ -122,3 +98,5 @@ int set_balance(struct pulseaudio_t *pulse, float b);
 int set_mute(struct pulseaudio_t *pulse, int mute);
 int unmute(struct pulseaudio_t *pulse);
 int mute(struct pulseaudio_t *pulse);
+
+/* vim: set noet ts=2 sw=2: */

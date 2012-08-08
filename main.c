@@ -50,6 +50,7 @@ enum action {
 	ACTION_DECREASE,
 	ACTION_MUTE,
 	ACTION_UNMUTE,
+	ACTION_ISMUTED,
 	ACTION_TOGGLE,
 	ACTION_INVALID
 };
@@ -229,6 +230,9 @@ int main(int argc, char *argv[])
 		case ACTION_UNMUTE:
 			rc = set_mute(&pulse, 0);
 			break;
+		case ACTION_ISMUTED:
+			rc = !pulse.source->mute;
+			break;
 		case ACTION_TOGGLE:
 			rc = set_mute(&pulse, !pulse.source->mute);
 			break;
@@ -259,12 +263,12 @@ void usage(FILE *out)
 	fputs("  get-volume         get volume\n", out);
 	fputs("  set-volume VALUE   set volume\n", out);
 	fputs("  get-balance        get balance for output\n", out);
-	fputs("  set-balance VALUE  set balance for output, pass double -- before the negative number ex( -- -0.5) \n", out);
-	fputs("                     range is between -1.0 to 1.0 and 0 being centered\n", out);
+	fputs("  set-balance VALUE  set balance for output, pass double between -1.0 to 1.0\n", out);
 	fputs("  increase VALUE     increase volume\n", out);
 	fputs("  decrease VALUE     decrease volume\n", out);
 	fputs("  mute               mute\n", out);
 	fputs("  unmute             unmute\n", out);
+	fputs("  is-muted           check if muted\n", out);
 	fputs("  toggle             toggle mute\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -298,6 +302,8 @@ enum action string_to_verb(const char *string)
 		return ACTION_MUTE;
 	else if(strcmp(string, "unmute") == 0)
 		return ACTION_UNMUTE;
+	else if(strcmp(string, "is-muted") == 0)
+		return ACTION_ISMUTED;
 	else if(strcmp(string, "toggle") == 0)
 		return ACTION_TOGGLE;
 

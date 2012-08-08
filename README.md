@@ -26,12 +26,12 @@ Commands:
   get-volume         get volume
   set-volume VALUE   set volume
   get-balance        get balance for output
-  set-balance VALUE  set balance for output, pass double -- before the negative number ex( -- -0.5)
-                     range is between -1.0 to 1.0 and 0 being centered
+  set-balance VALUE  set balance for output, pass double between -1.0 to 1.0
   increase VALUE     increase volume
   decrease VALUE     decrease volume
   mute               mute
   unmute             unmute
+  is-muted           check if muted
   toggle             toggle mute
 ```
 

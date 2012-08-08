@@ -137,8 +137,10 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		stream->mute = stream_info->mute;
 		stream->t = TYPE_STREAM;
 
-		stream->ops.op_mute = pa_context_set_sink_input_mute;
-		stream->ops.op_vol  = pa_context_set_sink_input_volume;
+		stream->ops.op_mute  = pa_context_set_sink_input_mute;
+		stream->ops.op_vol   = pa_context_set_sink_input_volume;
+		stream->ops.op_print = print_stream;
+
 		return stream;
 	} else if (sink_info != NULL) {
 		struct source_t *sink = calloc(1, sizeof(struct source_t));
@@ -153,8 +155,10 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 		sink->t = TYPE_SINK;
 
-		sink->ops.op_mute = pa_context_set_sink_mute_by_index;
-		sink->ops.op_vol  = pa_context_set_sink_volume_by_index;
+		sink->ops.op_mute  = pa_context_set_sink_mute_by_index;
+		sink->ops.op_vol   = pa_context_set_sink_volume_by_index;
+		sink->ops.op_print = print_sink;
+
 		return sink;
 	} else {
 		struct source_t *source = calloc(1, sizeof(struct source_t));
@@ -169,8 +173,10 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		source->balance = 0.0f;
 		source->t = TYPE_SOURCE;
 
-		source->ops.op_mute = pa_context_set_source_mute_by_index;
-		source->ops.op_vol  = pa_context_set_source_volume_by_index;
+		source->ops.op_mute  = pa_context_set_source_mute_by_index;
+		source->ops.op_vol   = pa_context_set_source_volume_by_index;
+		source->ops.op_print = print_source;
+
 		return source;
 	}
 }
@@ -342,20 +348,7 @@ void print_sources(struct pulseaudio_t *pulse)
 	struct source_t *source = pulse->source;
 
 	while (source) {
-		switch (source->t) {
-			case TYPE_SINK:
-				print_sink(source);
-				break;
-			case TYPE_STREAM:
-				print_stream(source);
-				break;
-			case TYPE_SOURCE:
-				print_source(source);
-				break;
-			default:
-				break;
-		}
-
+		source->ops.op_print(source);
 		source = source->next_source;
 	}
 }

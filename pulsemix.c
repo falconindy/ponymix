@@ -251,7 +251,7 @@ int pulse_connect(struct pulseaudio_t *pulse)
 	while (pulse->state == STATE_CONNECTING)
 		pa_mainloop_iterate(pulse->mainloop, 1, &r);
 
-	if(pulse->state == STATE_ERROR) {
+	if (pulse->state == STATE_ERROR) {
 		r = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to connect to pulse daemon: %s\n", pa_strerror(r));
 	}
@@ -391,7 +391,7 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
-	if(pulse->success)
+	if (pulse->success)
 		printf("%ld\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
@@ -403,7 +403,7 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 
 void get_balance(struct pulseaudio_t *pulse)
 {
-	if(pulse->source->t != TYPE_SINK)
+	if (pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only get balance on output devices");
 
 	printf("%.2f\n", pulse->source->balance);
@@ -411,10 +411,10 @@ void get_balance(struct pulseaudio_t *pulse)
 
 int set_balance(struct pulseaudio_t *pulse, float b)
 {
-	if(pulse->source->t != TYPE_SINK)
+	if (pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
-	if(pa_channel_map_valid(pulse->source->map) == 0)
+	if (pa_channel_map_valid(pulse->source->map) == 0)
 		errx(EXIT_FAILURE, "cant set balance on that output device.");
 
 	b = CLAMP(b, -1.0f, 1.0f);
@@ -422,7 +422,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
-	if(pulse->success)
+	if (pulse->success)
 		printf("%.2f\n", b);
 	else {
 		int err = pa_context_errno(pulse->cxt);

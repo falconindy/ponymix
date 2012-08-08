@@ -271,7 +271,7 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "invalid ID: %s", name);
 		else
 			get_by_index(&pulse, (uint32_t)idx);
-		if(pulse.source == NULL)
+		if (!pulse.source)
 			errx(EXIT_FAILURE, "input not found with ID: %s", name);
 	}
 

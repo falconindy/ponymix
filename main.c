@@ -162,13 +162,12 @@ void usage(FILE *out)
 int main(int argc, char *argv[])
 {
 	int rc = 0;
-	enum type use = TYPE_INVALID;
 	enum action verb;
 	char *name = NULL;
 	union arg_t value;
 
-	void (*get_default)(struct pulseaudio_t *) = NULL;
-	void (*get_by_index)(struct pulseaudio_t *, uint32_t) = NULL;
+	void (*get_default)(struct pulseaudio_t *) = get_default_sink;
+	void (*get_by_index)(struct pulseaudio_t *, uint32_t) = get_sink_by_index;
 
 	static const struct option opts[] = {
 		{ "help",        no_argument,       0, 'h' },
@@ -188,25 +187,20 @@ int main(int argc, char *argv[])
 				usage(stdout);
 				break;
 			case 'a':
-				use = TYPE_STREAM;
 				if (optarg != NULL)
 					name = optarg;
-
+				get_default  = NULL;
 				get_by_index = get_stream_by_index;
 				break;
 			case 'i':
-				use = TYPE_SOURCE;
 				if (optarg != NULL)
 					name = optarg;
-
 				get_default  = get_default_source;
 				get_by_index = get_source_by_index;
 				break;
 			case 'o':
-				use = TYPE_SINK;
 				if (optarg != NULL)
 					name = optarg;
-
 				get_default  = get_default_sink;
 				get_by_index = get_sink_by_index;
 				break;
@@ -264,9 +258,6 @@ int main(int argc, char *argv[])
 		default:
 			break;
 	}
-
-	if (use == TYPE_INVALID)
-		errx(EXIT_FAILURE, "missing option: Try 'pulsemix --help' for more information.");
 
 	if (!name && !get_default)
 		errx(EXIT_FAILURE, "controlling applications needs an ID");

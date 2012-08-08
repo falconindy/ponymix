@@ -164,7 +164,8 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 	stream->pp_name  = "Application";
 	stream->desc     = strdup(pa_proplist_gets(stream_info->proplist, PA_PROP_APPLICATION_NAME));
 	stream->mute     = stream_info->mute;
-	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
+	memcpy(&stream->map,    &stream_info->channel_map, sizeof(pa_channel_map));
+	memcpy(&stream->volume, &stream_info->volume,      sizeof(pa_cvolume));
 
 	stream->simple_volume = calc_volume(&stream->volume);
 
@@ -382,17 +383,17 @@ void get_volume(struct pulseaudio_t *pulse)
 	printf("%d\n", pulse->source->simple_volume);
 }
 
-int set_volume(struct pulseaudio_t *pulse, long v)
+int set_volume(struct pulseaudio_t *pulse, int v)
 {
 	pa_cvolume *vol = NULL;
 
 	v = CLAMP(v, 0, 150);
-	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels,(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
+	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels, (int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (pulse->success)
-		printf("%ld\n", v);
+		printf("%d\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
 		errx(EXIT_FAILURE, "failed to set volume: %s", pa_strerror(err));
@@ -406,24 +407,21 @@ void get_balance(struct pulseaudio_t *pulse)
 	if (pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only get balance on output devices");
 
-	printf("%.2f\n", pulse->source->balance);
+	printf("%d\n", (int)(pulse->source->balance * 100));
 }
 
-int set_balance(struct pulseaudio_t *pulse, float b)
+int set_balance(struct pulseaudio_t *pulse, int b)
 {
-	if (pulse->source->t != TYPE_SINK)
-		errx(EXIT_FAILURE, "error can only set balance on output devices");
-
 	if (pa_channel_map_valid(&pulse->source->map) == 0)
-		errx(EXIT_FAILURE, "cant set balance on that output device.");
+		errx(EXIT_FAILURE, "can't set balance on that output device.");
 
-	b = CLAMP(b, -1.0f, 1.0f);
-	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, &pulse->source->map, b);
+	b = CLAMP(b, -100, 100);
+	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, &pulse->source->map, b / 100);
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (pulse->success)
-		printf("%.2f\n", b);
+		printf("%d\n", b);
 	else {
 		int err = pa_context_errno(pulse->cxt);
 		errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));

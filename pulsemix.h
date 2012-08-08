@@ -94,9 +94,9 @@ void print_sources(struct pulseaudio_t *pulse);
 
 void set_default(struct pulseaudio_t *pulse);
 void get_volume(struct pulseaudio_t *pulse);
-int set_volume(struct pulseaudio_t *pulse, long v);
+int set_volume(struct pulseaudio_t *pulse, int v);
 void get_balance(struct pulseaudio_t *pulse);
-int set_balance(struct pulseaudio_t *pulse, float b);
+int set_balance(struct pulseaudio_t *pulse, int b);
 int set_mute(struct pulseaudio_t *pulse, int mute);
 int unmute(struct pulseaudio_t *pulse);
 int mute(struct pulseaudio_t *pulse);

@@ -222,12 +222,7 @@ int main(int argc, char *argv[])
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for command '%s'", argv[optind - 1]);
 		else {
-			int r = 0;
-			if (verb == ACTION_SETBAL)
-				r = xstrtof(argv[optind], &value.f);
-			else
-				r = xstrtol(argv[optind], &value.l);
-
+			int r = xstrtol(argv[optind], &value.l);
 			if (r < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
@@ -289,7 +284,7 @@ int main(int argc, char *argv[])
 			get_balance(&pulse);
 			break;
 		case ACTION_SETBAL:
-			rc = set_balance(&pulse, value.f);
+			rc = set_balance(&pulse, value.l);
 			break;
 		case ACTION_INCREASE:
 			rc = set_volume(&pulse, pulse.source->simple_volume + value.l);

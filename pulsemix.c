@@ -337,34 +337,19 @@ void print_sources(struct pulseaudio_t *pulse)
 
 static void print_stream(struct source_t *stream)
 {
-	char *mute = NULL;
-	if (stream->mute)
-		mute = "true";
-	else
-		mute = "false";
-
+	char *mute = stream->mute ? "true" : "false";
 	printf("Application ID: %2d\n %s : %s\n Volume: %d%% Muted: %s\n", stream->idx, stream->name, stream->desc, stream->volume_percent, mute);
 }
 
 static void print_sink(struct source_t *sink)
 {
-	char *mute = NULL;
-	if(sink->mute)
-		mute = "true";
-	else
-		mute = "false";
-
+	char *mute = sink->mute ? "true" : "false";
 	printf("Output ID:%2d\n %s\n %s\n Volume: %d%% Balance: %.1f Muted: %s\n", sink->idx, sink->name, sink->desc, sink->volume_percent, sink->balance, mute);
 }
 
 static void print_source(struct source_t *source)
 {
-	char *mute = NULL;
-	if(source->mute)
-		mute = "true";
-	else
-		mute = "false";
-
+	char *mute = source->mute ? "true" : "false";
 	printf("Input ID: %2d\n %s\n %s\n Volume: %d%% Muted: %s\n", source->idx, source->name, source->desc, source->volume_percent, mute);
 }
 

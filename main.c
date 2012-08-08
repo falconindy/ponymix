@@ -54,10 +54,10 @@ enum action {
 	ACTION_INVALID
 };
 
-void usage(FILE *out);
-enum action string_to_verb(const char *string);
-int xstrtof(const char *str, float *out);
-int xstrtol(const char *str, long *out);
+static void usage(FILE *out);
+static enum action string_to_verb(const char *string);
+static int xstrtof(const char *str, float *out);
+static int xstrtol(const char *str, long *out);
 
 int main(int argc, char *argv[])
 {
@@ -216,10 +216,10 @@ int main(int argc, char *argv[])
 			rc = set_volume(&pulse, pulse.source->volume_percent - value.l);
 			break;
 		case ACTION_MUTE:
-			rc = mute(&pulse);
+			rc = set_mute(&pulse, 1);
 			break;
 		case ACTION_UNMUTE:
-			rc = unmute(&pulse);
+			rc = set_mute(&pulse, 0);
 			break;
 		case ACTION_TOGGLE:
 			rc = set_mute(&pulse, !pulse.source->mute);
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 	return rc;
 }
 
-static void usage(FILE *out)
+void usage(FILE *out)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
@@ -261,7 +261,7 @@ static void usage(FILE *out)
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
-static enum action string_to_verb(const char *string)
+enum action string_to_verb(const char *string)
 {
 	if(strcmp(string, "list-defaults") == 0)
 		return ACTION_LISTDEFAULTS;
@@ -295,35 +295,35 @@ static enum action string_to_verb(const char *string)
 	return ACTION_INVALID;
 }
 
-static int xstrtof(const char *str, float *out)
+int xstrtof(const char *str, float *out)
 {
-    char *end = NULL;
+	char *end = NULL;
 
-    if (str == NULL || *str == '\0')
-        return -1;
-    errno = 0;
+	if (str == NULL || *str == '\0')
+		return -1;
+	errno = 0;
 
-    *out = strtof(str, &end);
-    if (errno || str == end || (end && *end))
-        return -1;
+	*out = strtof(str, &end);
+	if (errno || str == end || (end && *end))
+		return -1;
 
-    return 0;
+	return 0;
 }
 
 
-static int xstrtol(const char *str, long *out)
+int xstrtol(const char *str, long *out)
 {
-    char *end = NULL;
+	char *end = NULL;
 
-    if (str == NULL || *str == '\0')
-        return -1;
-    errno = 0;
+		if (str == NULL || *str == '\0')
+			return -1;
+		errno = 0;
 
-    *out = strtol(str, &end, 10);
-    if (errno || str == end || (end && *end))
-        return -1;
+		*out = strtol(str, &end, 10);
+		if (errno || str == end || (end && *end))
+			return -1;
 
-    return 0;
+		return 0;
 }
 
 /* vim: set noet ts=2 sw=2: */

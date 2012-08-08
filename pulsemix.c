@@ -481,36 +481,25 @@ int set_mute(struct pulseaudio_t *pulse, int mute)
 	switch (pulse->source->t) {
 		case TYPE_STREAM:
 			op = pa_context_set_sink_input_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-			pulse_async_wait(pulse, op);
-			pa_operation_unref(op);
-	} else if (pulse->source->t == TYPE_SINK) {
-		pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		pa_operation_unref(op);
-	} else {
-		pa_operation* op = pa_context_set_source_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-		pa_operation_unref(op);
+			break;
+		case TYPE_SINK:
+			op = pa_context_set_sink_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
+			break;
+		case TYPE_SOURCE:
+			op = pa_context_set_source_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
+			break;
+		default:
+			return 1;
 	}
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
 
-	if (pulse->success)
-		printf("%d\n", mute);
-	else {
+	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to mute: %s\n", pa_strerror(err));
+		errx(EXIT_FAILURE, "failed to mute: %s\n", pa_strerror(err));
 	}
 
 	return !pulse->success;
-}
-
-int unmute(struct pulseaudio_t *pulse)
-{
-	return set_mute(pulse, 0);
-}
-
-int mute(struct pulseaudio_t *pulse)
-{
-	return set_mute(pulse, 1);
 }
 
 /* vim: set noet ts=2 sw=2: */

@@ -213,7 +213,6 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->map            = &source_info->channel_map;
 	source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
 	source->mute           = source_info->mute;
-	source->balance        = 0.0f;
 	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
 
 	source->op_mute = pa_context_set_source_mute_by_index;
@@ -269,17 +268,6 @@ void pulse_deinit(struct pulseaudio_t *pulse)
 
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
-
-	while (source) {
-		source = pulse->source->next_source;
-		free(pulse->source);
-		pulse->source = source;
-	}
-}
-
-void clean_source_t(struct pulseaudio_t *pulse)
-{
-	struct source_t *source = pulse->source;
 
 	while (source) {
 		source = pulse->source->next_source;
@@ -404,7 +392,6 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 	vol = pa_cvolume_set(&pulse->source->volume, pulse->source->volume.channels,(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
 	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
-	pa_operation_unref(op);
 
 	if(pulse->success)
 		printf("%ld\n", v);
@@ -412,7 +399,7 @@ int set_volume(struct pulseaudio_t *pulse, long v)
 		int err = pa_context_errno(pulse->cxt);
 		errx(EXIT_FAILURE, "failed to set volume: %s", pa_strerror(err));
 	}
-
+	pa_operation_unref(op);
 	return !pulse->success;
 }
 
@@ -429,40 +416,34 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 	if(pulse->source->t != TYPE_SINK)
 		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
+	if(pa_channel_map_valid(pulse->source->map) == 0)
+		errx(EXIT_FAILURE, "cant set balance on that input device.");
+
 	b = CLAMP(b, -1.0f, 1.0f);
+	pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
+	pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+	pulse_async_wait(pulse, op);
 
-	if(pa_channel_map_valid(pulse->source->map) != 0) {
-		pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
-		pa_operation *op = pulse->source->op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
-		pulse_async_wait(pulse, op);
-
-		if(pulse->success)
-			printf("%.2f\n", b);
-		else {
-			int err = pa_context_errno(pulse->cxt);
-			errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));
-		}
-
-		pa_operation_unref(op);
-
-		return !pulse->success;
+	if(pulse->success)
+		printf("%.2f\n", b);
+	else {
+		int err = pa_context_errno(pulse->cxt);
+		errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));
 	}
-
-	errx(EXIT_FAILURE, "cant set balance on that input device.");
-	return -1;
+	pa_operation_unref(op);
+	return !pulse->success;
 }
 
 int set_mute(struct pulseaudio_t *pulse, int mute)
 {
 	pa_operation *op = pulse->source->op_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
 	pulse_async_wait(pulse, op);
-	pa_operation_unref(op);
 
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
 		errx(EXIT_FAILURE, "failed to mute: %s", pa_strerror(err));
 	}
-
+	pa_operation_unref(op);
 	return !pulse->success;
 }
 

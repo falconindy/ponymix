@@ -79,7 +79,6 @@ struct pulseaudio_t {
 void pulse_init(struct pulseaudio_t *pulse, const char *clientname);
 int pulse_connect(struct pulseaudio_t *pulse);
 void pulse_deinit(struct pulseaudio_t *pulse);
-void clean_source_t(struct pulseaudio_t *pulse);
 
 void get_streams(struct pulseaudio_t *pulse);
 void get_stream_by_index(struct pulseaudio_t *pulse, uint32_t idx);

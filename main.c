@@ -244,8 +244,6 @@ int main(int argc, char *argv[])
 	switch (verb) {
 		case ACTION_LISTDEFAULTS:
 			get_default_source(&pulse);
-			print_sources(&pulse);
-			clean_source_t(&pulse);
 			get_default_sink(&pulse);
 			print_sources(&pulse);
 			goto exit;

@@ -151,16 +151,16 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 {
 	struct source_t *stream = calloc(1, sizeof(struct source_t));
-	stream->t = TYPE_STREAM;
 
-	stream->idx            = stream_info->index;
-	stream->name           = stream_info->name;
-	stream->pp_name        = "Application";
-	stream->proplist       = stream_info->proplist;
-	stream->desc           = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
-	stream->volume_percent = (int)((double)pa_cvolume_avg(&stream_info->volume) / PA_VOLUME_NORM * 100);
-	stream->mute           = stream_info->mute;
+	stream->t        = TYPE_STREAM;
+	stream->idx      = stream_info->index;
+	stream->name     = strdup(stream_info->name);
+	stream->pp_name  = "Application";
+	stream->desc     = strdup(pa_proplist_gets(stream_info->proplist, PA_PROP_APPLICATION_NAME));
+	stream->mute     = stream_info->mute;
 	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
+
+	stream->simple_volume = (int)((double)pa_cvolume_avg(&stream->volume) / PA_VOLUME_NORM * 100);
 
 	stream->op_mute = pa_context_set_sink_input_mute;
 	stream->op_vol  = pa_context_set_sink_input_volume;
@@ -171,17 +171,18 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 static struct source_t *sink_new(const pa_sink_info *sink_info)
 {
 	struct source_t *sink = calloc(1, sizeof(struct source_t));
-	sink->t = TYPE_SINK;
 
-	sink->idx            = sink_info->index;
-	sink->name           = sink_info->name;
-	sink->pp_name        = "Output";
-	sink->desc           = sink_info->description;
-	sink->map            = &sink_info->channel_map;
-	sink->volume_percent = (int)((double)pa_cvolume_avg(&sink_info->volume) / PA_VOLUME_NORM * 100);
-	sink->mute           = sink_info->mute;
-	sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
+	sink->t       = TYPE_SINK;
+	sink->idx     = sink_info->index;
+	sink->name    = strdup(sink_info->name);
+	sink->pp_name = "Output";
+	sink->desc    = strdup(sink_info->description);
+	sink->map     = &sink_info->channel_map;
+	sink->mute    = sink_info->mute;
+	sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
+
+	sink->simple_volume = (int)((double)pa_cvolume_avg(&sink->volume) / PA_VOLUME_NORM * 100);
 
 	sink->op_mute = pa_context_set_sink_mute_by_index;
 	sink->op_vol  = pa_context_set_sink_volume_by_index;
@@ -192,16 +193,17 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 static struct source_t *source_new(const pa_source_info *source_info)
 {
 	struct source_t *source = calloc(1, sizeof(struct source_t));
-	source->t = TYPE_SOURCE;
 
-	source->idx            = source_info->index;
-	source->name           = source_info->name;
-	source->pp_name        = "Input";
-	source->desc           = source_info->description;
-	source->map            = &source_info->channel_map;
-	source->volume_percent = (int)((double)pa_cvolume_avg(&source_info->volume) / PA_VOLUME_NORM * 100);
-	source->mute           = source_info->mute;
+	source->t       = TYPE_SOURCE;
+	source->idx     = source_info->index;
+	source->name    = strdup(source_info->name);
+	source->pp_name = "Input";
+	source->desc    = strdup(source_info->description);
+	source->map     = &source_info->channel_map;
+	source->mute    = source_info->mute;
 	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
+
+	source->simple_volume = (int)((double)pa_cvolume_avg(&source->volume) / PA_VOLUME_NORM * 100);
 
 	source->op_mute = pa_context_set_source_mute_by_index;
 	source->op_vol  = pa_context_set_source_volume_by_index;
@@ -212,7 +214,7 @@ static struct source_t *source_new(const pa_source_info *source_info)
 static void print_source(struct source_t *source)
 {
 	char *mute = source->mute ? "[Muted]" : "";
-	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->volume_percent, mute);
+	printf("%s ID: %d\n %s\n %s\n Volume: %d%% %s\n", source->pp_name, source->idx, source->name, source->desc, source->simple_volume, mute);
 }
 
 void print_sources(struct pulseaudio_t *pulse)
@@ -259,6 +261,8 @@ void pulse_deinit(struct pulseaudio_t *pulse)
 
 	while (source) {
 		source = pulse->source->next_source;
+		free(pulse->source->name);
+		free(pulse->source->desc);
 		free(pulse->source);
 		pulse->source = source;
 	}
@@ -369,7 +373,7 @@ void set_default(struct pulseaudio_t *pulse)
 
 void get_volume(struct pulseaudio_t *pulse)
 {
-	printf("%d\n", pulse->source->volume_percent);
+	printf("%d\n", pulse->source->simple_volume);
 }
 
 int set_volume(struct pulseaudio_t *pulse, long v)
@@ -401,7 +405,7 @@ void get_balance(struct pulseaudio_t *pulse)
 
 int set_balance(struct pulseaudio_t *pulse, float b)
 {
-	if(pulse->source->t != TYPE_SINK)
+	if(pulse->source->t != TYPE_STREAM)
 		errx(EXIT_FAILURE, "error can only set balance on output devices");
 
 	if(pa_channel_map_valid(pulse->source->map) == 0)

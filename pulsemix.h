@@ -50,13 +50,12 @@ struct source_t {
 	enum type t;
 
 	uint32_t idx;
-	const char *name;
-	const char *desc;
+	char *name;
+	char *desc;
 	const char *pp_name;
 	const pa_channel_map *map;
 	pa_cvolume volume;
-	struct pa_proplist *proplist;
-	int volume_percent;
+	int simple_volume;
 	int mute;
 	float balance;
 

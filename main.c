@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 		{ "application", optional_argument, 0, 'a' },
 		{ "input",       optional_argument, 0, 'i' },
 		{ "output",      optional_argument, 0, 'o' },
-		{ 0 }
+		{ 0, 0, 0, 0 }
 	};
 
 	for (;;) {
@@ -301,10 +301,10 @@ int main(int argc, char *argv[])
 			rc = set_balance(&pulse, value.f);
 			break;
 		case ACTION_INCREASE:
-			rc = set_volume(&pulse, pulse.source->volume_percent + value.l);
+			rc = set_volume(&pulse, pulse.source->simple_volume + value.l);
 			break;
 		case ACTION_DECREASE:
-			rc = set_volume(&pulse, pulse.source->volume_percent - value.l);
+			rc = set_volume(&pulse, pulse.source->simple_volume - value.l);
 			break;
 		case ACTION_MUTE:
 			rc = set_mute(&pulse, 1);

@@ -259,8 +259,8 @@ void usage(FILE *out)
     fputs("\nOptions:\n", out);
     fputs(" -h, --help,           display this help and exit\n", out);
     fputs(" -a  --application=id  control a application\n", out);
-    fputs(" -i, --input=id        control the input device (if no index given use default set)\n", out);
-    fputs(" -o, --output=id       control the output device (if no index given use default set)\n", out);
+    fputs(" -i, --input=id        control the input device (if no id given use default set)\n", out);
+    fputs(" -o, --output=id       control the output device (if no id given use default set)\n", out);
 
     fputs("\nCommands:\n", out);
     fputs("  list-defaults      list default set input/output devices\n", out);

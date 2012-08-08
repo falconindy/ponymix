@@ -14,6 +14,10 @@ OBJECTS = ${SRCS:${EXT}=.o}
 
 pulsemix: $(OBJECTS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+
+install: pulsemix
+	mkdir -p $(DESTDIR)/usr/bin
+	install -m755 pulsemix $(DESTDIR)/usr/bin/pulsemix
  
 clean:
 	rm -f *.o pulsemix

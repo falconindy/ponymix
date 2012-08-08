@@ -96,12 +96,9 @@ static void stream_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int
 		return;
 
 	stream = stream_new(i);
-	if (pulse->source == NULL)
-		pulse->source = stream;
-	else {
+	if (pulse->source)
 		stream->next_source = pulse->source;
-		pulse->source = stream;
-	}
+	pulse->source = stream;
 }
 
 static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
@@ -113,12 +110,9 @@ static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol
 		return;
 
 	source = source_new(i);
-	if (pulse->source == NULL)
-		pulse->source = source;
-	else {
+	if (pulse->source)
 		source->next_source = pulse->source;
-		pulse->source = source;
-	}
+	pulse->source = source;
 }
 
 static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, void *raw)
@@ -130,12 +124,9 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol, vo
 		return;
 
 	sink = sink_new(i);
-	if (pulse->source == NULL)
-		pulse->source = sink;
-	else {
+	if (pulse->source)
 		sink->next_source = pulse->source;
-		pulse->source = sink;
-	}
+	pulse->source = sink;
 }
 
 static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
@@ -167,7 +158,7 @@ static struct source_t *stream_new(const pa_sink_input_info *stream_info)
 	stream->pp_name        = "Application";
 	stream->proplist       = stream_info->proplist;
 	stream->desc           = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
-	stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
+	stream->volume_percent = (int)((double)pa_cvolume_avg(&stream_info->volume) / PA_VOLUME_NORM * 100);
 	stream->mute           = stream_info->mute;
 	memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
 
@@ -187,7 +178,7 @@ static struct source_t *sink_new(const pa_sink_info *sink_info)
 	sink->pp_name        = "Output";
 	sink->desc           = sink_info->description;
 	sink->map            = &sink_info->channel_map;
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100) / PA_VOLUME_NORM);
+	sink->volume_percent = (int)((double)pa_cvolume_avg(&sink_info->volume) / PA_VOLUME_NORM * 100);
 	sink->mute           = sink_info->mute;
 	sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 	memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
@@ -208,7 +199,7 @@ static struct source_t *source_new(const pa_source_info *source_info)
 	source->pp_name        = "Input";
 	source->desc           = source_info->description;
 	source->map            = &source_info->channel_map;
-	source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
+	source->volume_percent = (int)((double)pa_cvolume_avg(&source_info->volume) / PA_VOLUME_NORM * 100);
 	source->mute           = source_info->mute;
 	memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
 

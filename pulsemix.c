@@ -128,14 +128,15 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 {
 	if (stream_info != NULL) {
 		struct source_t *stream = calloc(1, sizeof(struct source_t));
-		stream->idx = stream_info->index;
-		stream->name = stream_info->name;
-		stream->proplist = stream_info->proplist;
-		stream->desc = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
-		memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
-		stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
-		stream->mute = stream_info->mute;
 		stream->t = TYPE_STREAM;
+
+		stream->idx            = stream_info->index;
+		stream->name           = stream_info->name;
+		stream->proplist       = stream_info->proplist;
+		stream->desc           = strdup(pa_proplist_gets(stream->proplist, PA_PROP_APPLICATION_NAME));
+		stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
+		stream->mute           = stream_info->mute;
+		memcpy(&stream->volume, &stream_info->volume, sizeof(pa_cvolume));
 
 		stream->ops.op_mute  = pa_context_set_sink_input_mute;
 		stream->ops.op_vol   = pa_context_set_sink_input_volume;
@@ -144,16 +145,16 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		return stream;
 	} else if (sink_info != NULL) {
 		struct source_t *sink = calloc(1, sizeof(struct source_t));
-
-		sink->idx = sink_info->index;
-		sink->name = sink_info->name;
-		sink->desc = sink_info->description;
-		sink->map = &sink_info->channel_map;
-		memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
-		sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100) / PA_VOLUME_NORM);
-		sink->mute = sink_info->mute;
-		sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 		sink->t = TYPE_SINK;
+
+		sink->idx            = sink_info->index;
+		sink->name           = sink_info->name;
+		sink->desc           = sink_info->description;
+		sink->map            = &sink_info->channel_map;
+		sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100) / PA_VOLUME_NORM);
+		sink->mute           = sink_info->mute;
+		sink->balance        = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
+		memcpy(&sink->volume, &sink_info->volume, sizeof(pa_cvolume));
 
 		sink->ops.op_mute  = pa_context_set_sink_mute_by_index;
 		sink->ops.op_vol   = pa_context_set_sink_volume_by_index;
@@ -162,16 +163,16 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		return sink;
 	} else {
 		struct source_t *source = calloc(1, sizeof(struct source_t));
-
-		source->idx = source_info->index;
-		source->name = source_info->name;
-		source->desc = source_info->description;
-		source->map = &sink_info->channel_map;
-		memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
-		source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
-		source->mute = source_info->mute;
-		source->balance = 0.0f;
 		source->t = TYPE_SOURCE;
+
+		source->idx            = source_info->index;
+		source->name           = source_info->name;
+		source->desc           = source_info->description;
+		source->map            = &sink_info->channel_map;
+		source->volume_percent = (int)(((double)pa_cvolume_avg(&source->volume) * 100) / PA_VOLUME_NORM);
+		source->mute           = source_info->mute;
+		source->balance        = 0.0f;
+		memcpy(&source->volume, &source_info->volume, sizeof(pa_cvolume));
 
 		source->ops.op_mute  = pa_context_set_source_mute_by_index;
 		source->ops.op_vol   = pa_context_set_source_volume_by_index;
@@ -440,7 +441,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 
 	if(pa_channel_map_valid(pulse->source->map) != 0) {
 		pa_cvolume *vol = pa_cvolume_set_balance(&pulse->source->volume, pulse->source->map, b);
-		pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
+		pa_operation *op = pulse->source->ops.op_vol(pulse->cxt, pulse->source->idx, vol, success_cb, pulse);
 		pulse_async_wait(pulse, op);
 
 		if(pulse->success)

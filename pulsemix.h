@@ -46,17 +46,14 @@ enum type {
 	TYPE_STREAM
 };
 
-struct source_t;
-
-struct source_ops_t {
-	pa_operation *(* op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
-	pa_operation *(* op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
-	void (* op_print)(struct source_t *);
-};
-
 struct source_t {
 	enum type t;
-	struct source_ops_t ops;
+
+	struct {
+		pa_operation *(* op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
+		pa_operation *(* op_vol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
+		void (* op_print)(struct source_t *);
+	} ops;
 
 	uint32_t idx;
 	const char *name;

@@ -136,6 +136,8 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		stream->volume_percent = (int)(((double)pa_cvolume_avg(&stream->volume) * 100) / PA_VOLUME_NORM);
 		stream->mute = stream_info->mute;
 		stream->t = TYPE_STREAM;
+
+		stream->ops.op_mute = pa_context_set_sink_input_mute;
 		return stream;
 	} else if (sink_info != NULL) {
 		struct source_t *sink = calloc(1, sizeof(struct source_t));
@@ -149,6 +151,8 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		sink->mute = sink_info->mute;
 		sink->balance = pa_cvolume_get_balance(&sink_info->volume, &sink_info->channel_map);
 		sink->t = TYPE_SINK;
+
+		sink->ops.op_mute = pa_context_set_sink_mute_by_index;
 		return sink;
 	} else {
 		struct source_t *source = calloc(1, sizeof(struct source_t));
@@ -162,6 +166,8 @@ static struct source_t *source_new(const pa_sink_input_info *stream_info, const 
 		source->mute = source_info->mute;
 		source->balance = 0.0f;
 		source->t = TYPE_SOURCE;
+
+		source->ops.op_mute = pa_context_set_source_mute_by_index;
 		return source;
 	}
 }
@@ -473,21 +479,7 @@ int set_balance(struct pulseaudio_t *pulse, float b)
 
 int set_mute(struct pulseaudio_t *pulse, int mute)
 {
-	pa_operation *op = NULL;
-
-	switch (pulse->source->t) {
-		case TYPE_STREAM:
-			op = pa_context_set_sink_input_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-			break;
-		case TYPE_SINK:
-			op = pa_context_set_sink_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-			break;
-		case TYPE_SOURCE:
-			op = pa_context_set_source_mute_by_index(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
-			break;
-		default:
-			return 1;
-	}
+	pa_operation *op = pulse->source->ops.op_mute(pulse->cxt, pulse->source->idx, mute, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 

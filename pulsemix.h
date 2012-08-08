@@ -46,7 +46,15 @@ enum type {
 	TYPE_STREAM
 };
 
+
+struct source_ops_t {
+	pa_operation *(* op_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
+};
+
 struct source_t {
+	enum type t;
+	struct source_ops_t ops;
+
 	uint32_t idx;
 	const char *name;
 	const char *desc;
@@ -56,7 +64,6 @@ struct source_t {
 	int volume_percent;
 	int mute;
 	float balance;
-	enum type t;
 
 	struct source_t *next_source;
 };

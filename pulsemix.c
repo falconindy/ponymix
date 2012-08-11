@@ -106,6 +106,69 @@ int xstrtol(const char *str, long *out)
 	return 0;
 }
 
+static struct sink_t *sink_new(const pa_sink_info *info)
+{
+	struct sink_t *sink = calloc(1, sizeof(struct sink_t));
+
+	sink->idx = info->index;
+	sink->name = info->name;
+	sink->desc = info->description;
+	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
+	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
+			/ PA_VOLUME_NORM);
+	sink->mute = info->mute;
+
+	return sink;
+}
+
+static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
+		void *raw)
+{
+	struct pulseaudio_t *pulse = raw;
+	struct sink_t *s, *sink;
+
+	if (eol)
+		return;
+
+	sink = sink_new(i);
+
+	if (pulse->sink == NULL)
+		pulse->sink = sink;
+	else {
+		s = pulse->sink;
+		sink->next_sink = s;
+		pulse->sink = sink;
+	}
+}
+
+static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
+		void *raw)
+{
+	const char **sink_name = (const char **)raw;
+
+	*sink_name = i->default_sink_name;
+}
+
+static void state_cb(pa_context UNUSED *c, void *raw)
+{
+	struct pulseaudio_t *pulse = raw;
+
+	switch (pa_context_get_state(pulse->cxt)) {
+	case PA_CONTEXT_READY:
+		pulse->state = STATE_CONNECTED;
+		break;
+	case PA_CONTEXT_FAILED:
+		pulse->state = STATE_ERROR;
+		break;
+	case PA_CONTEXT_UNCONNECTED:
+	case PA_CONTEXT_AUTHORIZING:
+	case PA_CONTEXT_SETTING_NAME:
+	case PA_CONTEXT_CONNECTING:
+	case PA_CONTEXT_TERMINATED:
+		break;
+	}
+}
+
 static void success_cb(pa_context UNUSED *c, int success, void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
@@ -169,21 +232,6 @@ static int sink_mute(struct pulseaudio_t *pulse, struct sink_t *sink)
 	return sink_set_mute(pulse, sink, 1);
 }
 
-static struct sink_t *sink_new(const pa_sink_info *info)
-{
-	struct sink_t *sink = calloc(1, sizeof(struct sink_t));
-
-	sink->idx = info->index;
-	sink->name = info->name;
-	sink->desc = info->description;
-	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
-			/ PA_VOLUME_NORM);
-	sink->mute = info->mute;
-
-	return sink;
-}
-
 static void print_sink(struct sink_t *sink)
 {
 	printf("sink %2d: %s\n  %s\n  Avg. Volume: %d%%\n",
@@ -199,55 +247,6 @@ static void print_sinks(struct pulseaudio_t *pulse)
 		sink = sink->next_sink;
 	}
 }
-
-static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
-		void *raw)
-{
-	const char **sink_name = (const char **)raw;
-
-	*sink_name = i->default_sink_name;
-}
-
-static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
-		void *raw)
-{
-	struct pulseaudio_t *pulse = raw;
-	struct sink_t *s, *sink;
-
-	if (eol)
-		return;
-
-	sink = sink_new(i);
-
-	if (pulse->sink == NULL)
-		pulse->sink = sink;
-	else {
-		s = pulse->sink;
-		sink->next_sink = s;
-		pulse->sink = sink;
-	}
-}
-
-static void state_cb(pa_context UNUSED *c, void *raw)
-{
-	struct pulseaudio_t *pulse = raw;
-
-	switch (pa_context_get_state(pulse->cxt)) {
-	case PA_CONTEXT_READY:
-		pulse->state = STATE_CONNECTED;
-		break;
-	case PA_CONTEXT_FAILED:
-		pulse->state = STATE_ERROR;
-		break;
-	case PA_CONTEXT_UNCONNECTED:
-	case PA_CONTEXT_AUTHORIZING:
-	case PA_CONTEXT_SETTING_NAME:
-	case PA_CONTEXT_CONNECTING:
-	case PA_CONTEXT_TERMINATED:
-		break;
-	}
-}
-
 static void get_sinks(struct pulseaudio_t *pulse)
 {
 	pa_operation *op = pa_context_get_sink_info_list(pulse->cxt,
@@ -298,6 +297,19 @@ static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 	return !pulse->success;
 }
 
+static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
+{
+	/* allocate */
+	pulse->mainloop = pa_mainloop_new();
+	pulse->mainloop_api = pa_mainloop_get_api(pulse->mainloop);
+	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
+	pulse->state = STATE_CONNECTING;
+	pulse->sink = NULL;
+
+	/* set state callback for connection */
+	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
+}
+
 static void pulse_deinit(struct pulseaudio_t *pulse)
 {
 	struct sink_t *sink = pulse->sink;
@@ -310,19 +322,6 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 		free(pulse->sink);
 		pulse->sink = sink;
 	}
-}
-
-static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
-{
-	/* allocate */
-	pulse->mainloop = pa_mainloop_new();
-	pulse->mainloop_api = pa_mainloop_get_api(pulse->mainloop);
-	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
-	pulse->state = STATE_CONNECTING;
-	pulse->sink = NULL;
-
-	/* set state callback for connection */
-	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
 }
 
 static int pulse_connect(struct pulseaudio_t *pulse)

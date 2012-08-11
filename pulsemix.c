@@ -103,7 +103,7 @@ struct pulseaudio_t {
 	struct io_t *head;
 };
 
-int xstrtol(const char *str, long *out)
+static int xstrtol(const char *str, long *out)
 {
 	char *end = NULL;
 
@@ -437,7 +437,7 @@ static int pulse_connect(struct pulseaudio_t *pulse)
 	return 0;
 }
 
-void usage(FILE *out)
+static void __attribute__((__noreturn__)) usage(FILE *out)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
@@ -463,7 +463,7 @@ void usage(FILE *out)
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
-enum action string_to_verb(const char *string)
+static enum action string_to_verb(const char *string)
 {
 	if (strcmp(string, "defaults") == 0)
 		return ACTION_DEFAULTS;

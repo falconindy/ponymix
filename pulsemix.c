@@ -328,6 +328,14 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	get_sink_by_name(pulse, sink_name);
 }
 
+static void get_sources(struct pulseaudio_t *pulse)
+{
+	pa_operation *op = pa_context_get_source_info_list(pulse->cxt,
+			source_add_cb, pulse);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+}
+
 static void get_source_by_name(struct pulseaudio_t *pulse, const char *name)
 {
 	pa_operation *op = pa_context_get_source_info_by_name(pulse->cxt, name,
@@ -538,6 +546,7 @@ int main(int argc, char *argv[])
 
 	if (verb == ACTION_LIST) {
 		get_sinks(&pulse);
+		get_sources(&pulse);
 		print_all(&pulse);
 	} else {
 		/* determine sink */

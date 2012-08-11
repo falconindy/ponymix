@@ -442,23 +442,23 @@ void usage(FILE *out)
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
 	fputs(" -h, --help,          display this help and exit\n", out);
-	fputs(" -o, --sink <name>    control a sink other than the default\n", out);
-	fputs(" -i, --source <name>  control a source\n", out);
+	fputs(" -o, --sink=<name>    control a sink other than the default\n", out);
+	fputs(" -i, --source=<name>  control a source\n", out);
 
 	fputs("\nCommands:\n", out);
 	fputs("  defaults            list default devices\n", out);
-	fputs("  list                list available sinks\n", out);
-	fputs("  get-volume          get volume for sink\n", out);
-	fputs("  set-volume VALUE    set volume for sink\n", out);
-	fputs("  get-balance         get balance for sink\n", out);
-	fputs("  set-balance VALUE   set balance for sink\n", out);
+	fputs("  list                list available devices\n", out);
+	fputs("  get-volume          get volume for device\n", out);
+	fputs("  set-volume VALUE    set volume for device\n", out);
+	fputs("  get-balance         get balance for device\n", out);
+	fputs("  set-balance VALUE   set balance for device\n", out);
 	fputs("  increase VALUE      increase volume\n", out);
 	fputs("  decrease VALUE      decrease volume\n", out);
-	fputs("  mute                mute active sink\n", out);
-	fputs("  unmute              unmute active sink\n", out);
+	fputs("  mute                mute device\n", out);
+	fputs("  unmute              unmute device\n", out);
 	fputs("  toggle              toggle mute\n", out);
 	fputs("  is-muted            check if muted\n", out);
-	fputs("  set-default NAME    set default sink\n", out);
+	fputs("  set-default NAME    set default device\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }

@@ -78,8 +78,8 @@ enum type {
 struct io_t {
 	enum type type;
 	uint32_t idx;
-	const char *name;
-	const char *desc;
+	char *name;
+	char *desc;
 	pa_cvolume volume;
 	int volume_percent;
 	int mute;
@@ -121,8 +121,8 @@ static struct io_t *sink_new(const pa_sink_info *info)
 
 	sink->type = TYPE_SINK;
 	sink->idx = info->index;
-	sink->name = info->name;
-	sink->desc = info->description;
+	sink->name = strdup(info->name);
+	sink->desc = strdup(info->description);
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
 	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
@@ -138,20 +138,16 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 		void *raw)
 {
 	struct pulseaudio_t *pulse = raw;
-	struct io_t *s, *sink;
+	struct io_t *sink;
 
 	if (eol)
 		return;
 
 	sink = sink_new(i);
 
-	if (pulse->head == NULL)
-		pulse->head = sink;
-	else {
-		s = pulse->head;
-		sink->next = s;
-		pulse->head = sink;
-	}
+	if (pulse->head != NULL)
+		sink->next = pulse->head;
+	pulse->head = sink;
 }
 
 static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
@@ -332,6 +328,8 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 
 	while (node) {
 		node = pulse->head->next;
+		free(pulse->head->name);
+		free(pulse->head->desc);
 		free(pulse->head);
 		pulse->head = node;
 	}

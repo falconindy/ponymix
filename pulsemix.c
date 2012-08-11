@@ -46,11 +46,6 @@
 		((_x > _high) ? _high : ((_x < _low) ? _low : _x)); \
 	})
 
-union arg_t {
-	long l;
-	char *c;
-};
-
 enum connectstate {
 	STATE_CONNECTING = 0,
 	STATE_CONNECTED,
@@ -68,7 +63,7 @@ enum action {
 	ACTION_UNMUTE,
 	ACTION_TOGGLE,
 	ACTION_ISMUTED,
-	ACTION_SETSINK,
+	ACTION_SETDEFAULT,
 	ACTION_INVALID
 };
 
@@ -89,6 +84,7 @@ struct io_t {
 
 	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
+	pa_operation *(*fn_setdefault)(pa_context *, const char *, pa_context_success_cb_t, void *);
 
 	struct io_t *next;
 };
@@ -138,6 +134,7 @@ static struct io_t *sink_new(const pa_sink_info *info)
 
 	sink->fn_mute = pa_context_set_sink_mute_by_index;
 	sink->fn_setvol = pa_context_set_sink_volume_by_index;
+	sink->fn_setdefault = pa_context_set_default_sink;
 
 	populate(sink);
 	return sink;
@@ -157,6 +154,7 @@ static struct io_t *source_new(const pa_source_info *info)
 
 	source->fn_mute = pa_context_set_source_mute_by_index;
 	source->fn_setvol = pa_context_set_source_volume_by_index;
+	source->fn_setdefault = pa_context_set_default_source;
 
 	populate(source);
 	return source;
@@ -358,22 +356,16 @@ static void get_default_source(struct pulseaudio_t *pulse)
 	get_source_by_name(pulse, source_name);
 }
 
-static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
+static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 {
-	pa_operation *op;
-
-	get_sink_by_name(pulse, sinkname);
-	if (pulse->head == NULL) {
-		warnx("failed to get sink by name\n");
-		return 1;
-	}
-
-	op = pa_context_set_default_sink(pulse->cxt, sinkname, success_cb, pulse);
+	pa_operation *op = dev->fn_setdefault(pulse->cxt, dev->name, success_cb,
+			pulse);
 	pulse_async_wait(pulse, op);
 
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to set default sink to %s: %s\n", sinkname, pa_strerror(err));
+		fprintf(stderr, "failed to set default %s to %s: %s\n", dev->pp_name,
+				dev->name, pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -447,7 +439,7 @@ void usage(FILE *out)
 	fputs("  unmute              unmute active sink\n", out);
 	fputs("  toggle              toggle mute\n", out);
 	fputs("  is-muted            check if muted\n", out);
-	fputs("  set-sink SINKNAME   set default sink\n", out);
+	fputs("  set-default NAME    set default sink\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -474,8 +466,8 @@ enum action string_to_verb(const char *string)
 		return ACTION_TOGGLE;
 	else if (strcmp(string, "is-muted") == 0)
 		return ACTION_ISMUTED;
-	else if (strcmp(string, "set-sink") == 0)
-		return ACTION_SETSINK;
+	else if (strcmp(string, "set-default") == 0)
+		return ACTION_SETDEFAULT;
 
 	return ACTION_INVALID;
 }
@@ -485,7 +477,7 @@ int main(int argc, char *argv[])
 	struct pulseaudio_t pulse;
 	enum action verb;
 	char *id = NULL;
-	union arg_t value;
+	long value = 0;
 	int rc = 0;
 
 	const char *pp_name = "sink";
@@ -537,15 +529,15 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else {
 			/* validate to number */
-			int r = xstrtol(argv[optind], &value.l);
+			int r = xstrtol(argv[optind], &value);
 			if (r < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
-	else if (verb == ACTION_SETSINK) {
+	else if (verb == ACTION_SETDEFAULT) {
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else
-			value.c = argv[optind];
+			id = argv[optind];
 	}
 
 	/* initialize connection */
@@ -565,7 +557,7 @@ int main(int argc, char *argv[])
 		/* determine sink */
 		if (id && fn_get_by_name)
 			fn_get_by_name(&pulse, id);
-		else if (fn_get_default)
+		else if (verb != ACTION_SETDEFAULT && fn_get_default)
 			fn_get_default(&pulse);
 
 		if (pulse.head == NULL)
@@ -576,15 +568,15 @@ int main(int argc, char *argv[])
 			get_volume(&pulse);
 			break;
 		case ACTION_SETVOL:
-			rc = set_volume(&pulse, pulse.head, value.l);
+			rc = set_volume(&pulse, pulse.head, value);
 			break;
 		case ACTION_INCREASE:
 			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent + value.l, 0, 150));
+					CLAMP(pulse.head->volume_percent + value, 0, 150));
 			break;
 		case ACTION_DECREASE:
 			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent - value.l, 0, 150));
+					CLAMP(pulse.head->volume_percent - value, 0, 150));
 			break;
 		case ACTION_MUTE:
 			rc = mute(&pulse, pulse.head);
@@ -598,8 +590,9 @@ int main(int argc, char *argv[])
 		case ACTION_ISMUTED:
 			rc = !pulse.head->mute;
 			break;
-		case ACTION_SETSINK:
-			rc = set_default_sink(&pulse, value.c);
+		case ACTION_SETDEFAULT:
+			rc = set_default(&pulse, pulse.head);
+			break;
 		default:
 			break;
 		}

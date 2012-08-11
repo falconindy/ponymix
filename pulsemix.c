@@ -288,8 +288,14 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 
 static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 {
-	pa_operation* op = pulse->head->fn_mute(pulse->cxt, dev->idx, mute,
-			success_cb, pulse);
+	pa_operation* op;
+
+	/* new effective volume */
+	printf("%d\n", mute ? 0 : dev->volume_percent);
+
+	op = pulse->head->fn_mute(pulse->cxt, dev->idx, mute,
+			success_cb, pulse); 
+
 	pulse_async_wait(pulse, op);
 
 	if (!pulse->success) {

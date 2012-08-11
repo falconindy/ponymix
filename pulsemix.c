@@ -80,6 +80,7 @@ struct io_t {
 	uint32_t idx;
 	char *name;
 	char *desc;
+	const char *pp_name;
 	pa_cvolume volume;
 	int volume_percent;
 	int mute;
@@ -123,6 +124,7 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	sink->idx = info->index;
 	sink->name = strdup(info->name);
 	sink->desc = strdup(info->description);
+	sink->pp_name = "sink";
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
 	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
@@ -241,21 +243,22 @@ static int mute(struct pulseaudio_t *pulse, struct io_t *dev)
 	return set_mute(pulse, dev, 1);
 }
 
-static void print_sink(struct io_t *sink)
+static void print(struct io_t *dev)
 {
-	printf("sink %2d: %s\n  %s\n  Avg. Volume: %d%%\n",
-			sink->idx, sink->name, sink->desc, sink->volume_percent);
+	printf("%s %2d: %s\n  %s\n  Avg. Volume: %d%%\n", dev->pp_name,
+			dev->idx, dev->name, dev->desc, dev->volume_percent);
 }
 
-static void print_sinks(struct pulseaudio_t *pulse)
+static void print_all(struct pulseaudio_t *pulse)
 {
-	struct io_t *sink = pulse->head;
+	struct io_t *dev = pulse->head;
 
-	while (sink) {
-		print_sink(sink);
-		sink = sink->next;
+	while (dev) {
+		print(dev);
+		dev = dev->next;
 	}
 }
+
 static void get_sinks(struct pulseaudio_t *pulse)
 {
 	pa_operation *op = pa_context_get_sink_info_list(pulse->cxt,
@@ -459,7 +462,7 @@ int main(int argc, char *argv[])
 
 	if (verb == ACTION_LIST) {
 		get_sinks(&pulse);
-		print_sinks(&pulse);
+		print_all(&pulse);
 	} else {
 		/* determine sink */
 		if (sink) {

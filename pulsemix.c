@@ -287,8 +287,9 @@ static int mute(struct pulseaudio_t *pulse, struct io_t *dev)
 
 static void print(struct io_t *dev)
 {
-	printf("%s %2d: %s\n  %s\n  Avg. Volume: %d%%\n", dev->pp_name,
-			dev->idx, dev->name, dev->desc, dev->volume_percent);
+	printf("%s %2d: %s\n  %s\n  Avg. Volume: %d%% %s\n", dev->pp_name,
+			dev->idx, dev->name, dev->desc, dev->volume_percent,
+			dev->mute ? "[Muted]" : "");
 }
 
 static void print_all(struct pulseaudio_t *pulse)

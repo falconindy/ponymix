@@ -242,11 +242,6 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
-static void get_volume(struct pulseaudio_t *pulse)
-{
-	printf("%d\n", pulse->head->volume_percent);
-}
-
 static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 {
 	pa_cvolume *vol = pa_cvolume_set(&dev->volume, dev->volume.channels,
@@ -265,11 +260,6 @@ static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 	pa_operation_unref(op);
 
 	return !pulse->success;
-}
-
-static void get_balance(struct pulseaudio_t *pulse)
-{
-	printf("%d\n", pulse->head->balance);
 }
 
 static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
@@ -310,16 +300,6 @@ static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 	pa_operation_unref(op);
 
 	return !pulse->success;
-}
-
-static int unmute(struct pulseaudio_t *pulse, struct io_t *dev)
-{
-	return set_mute(pulse, dev, 0);
-}
-
-static int mute(struct pulseaudio_t *pulse, struct io_t *dev)
-{
-	return set_mute(pulse, dev, 1);
 }
 
 static void print(struct io_t *dev)
@@ -609,13 +589,13 @@ int main(int argc, char *argv[])
 
 		switch (verb) {
 		case ACTION_GETVOL:
-			get_volume(&pulse);
+			printf("%d\n", pulse.head->volume_percent);
 			break;
 		case ACTION_SETVOL:
 			rc = set_volume(&pulse, pulse.head, value);
 			break;
 		case ACTION_GETBAL:
-			get_balance(&pulse);
+			printf("%d\n", pulse.head->balance);
 			break;
 		case ACTION_SETBAL:
 			rc = set_balance(&pulse, pulse.head,
@@ -630,10 +610,10 @@ int main(int argc, char *argv[])
 					CLAMP(pulse.head->volume_percent - value, 0, 150));
 			break;
 		case ACTION_MUTE:
-			rc = mute(&pulse, pulse.head);
+			rc = set_mute(&pulse, pulse.head, 1);
 			break;
 		case ACTION_UNMUTE:
-			rc = unmute(&pulse, pulse.head);
+			rc = set_mute(&pulse, pulse.head, 0);
 			break;
 		case ACTION_TOGGLE:
 			rc = set_mute(&pulse, pulse.head, !pulse.head->mute);

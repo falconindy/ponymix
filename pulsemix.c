@@ -84,6 +84,9 @@ struct io_t {
 	int volume_percent;
 	int mute;
 
+	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
+	pa_operation *(*fn_setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
+
 	struct io_t *next;
 };
 
@@ -124,6 +127,9 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
 			/ PA_VOLUME_NORM);
 	sink->mute = info->mute;
+
+	sink->fn_mute = pa_context_set_sink_mute_by_index;
+	sink->fn_setvol = pa_context_set_sink_volume_by_index;
 
 	return sink;
 }
@@ -188,17 +194,17 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 }
 
-static void sink_get_volume(struct pulseaudio_t *pulse)
+static void get_volume(struct pulseaudio_t *pulse)
 {
 	printf("%d\n", pulse->head->volume_percent);
 }
 
-static int sink_set_volume(struct pulseaudio_t *pulse, struct io_t *sink, long v)
+static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 {
-	pa_cvolume *vol = pa_cvolume_set(&sink->volume, sink->volume.channels,
+	pa_cvolume *vol = pa_cvolume_set(&dev->volume, dev->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
-	pa_operation *op = pa_context_set_sink_volume_by_index(pulse->cxt,
-			sink->idx, vol, success_cb, pulse);
+	pa_operation *op = pulse->head->fn_setvol(pulse->cxt, dev->idx, vol,
+			success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (pulse->success)
@@ -213,15 +219,15 @@ static int sink_set_volume(struct pulseaudio_t *pulse, struct io_t *sink, long v
 	return !pulse->success;
 }
 
-static int sink_set_mute(struct pulseaudio_t *pulse, struct io_t *sink, int mute)
+static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 {
-	pa_operation* op = pa_context_set_sink_mute_by_index(pulse->cxt, sink->idx,
-			mute, success_cb, pulse);
+	pa_operation* op = pulse->head->fn_mute(pulse->cxt, dev->idx, mute,
+			success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to mute sink: %s\n", pa_strerror(err));
+		fprintf(stderr, "failed to mute device: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -229,14 +235,14 @@ static int sink_set_mute(struct pulseaudio_t *pulse, struct io_t *sink, int mute
 	return !pulse->success;
 }
 
-static int sink_unmute(struct pulseaudio_t *pulse, struct io_t *sink)
+static int unmute(struct pulseaudio_t *pulse, struct io_t *dev)
 {
-	return sink_set_mute(pulse, sink, 0);
+	return set_mute(pulse, dev, 0);
 }
 
-static int sink_mute(struct pulseaudio_t *pulse, struct io_t *sink)
+static int mute(struct pulseaudio_t *pulse, struct io_t *dev)
 {
-	return sink_set_mute(pulse, sink, 1);
+	return set_mute(pulse, dev, 1);
 }
 
 static void print_sink(struct io_t *sink)
@@ -468,27 +474,27 @@ int main(int argc, char *argv[])
 
 		switch (verb) {
 		case ACTION_GETVOL:
-			sink_get_volume(&pulse);
+			get_volume(&pulse);
 			break;
 		case ACTION_SETVOL:
-			rc = sink_set_volume(&pulse, pulse.head, value.l);
+			rc = set_volume(&pulse, pulse.head, value.l);
 			break;
 		case ACTION_INCREASE:
-			rc = sink_set_volume(&pulse, pulse.head,
+			rc = set_volume(&pulse, pulse.head,
 					CLAMP(pulse.head->volume_percent + value.l, 0, 150));
 			break;
 		case ACTION_DECREASE:
-			rc = sink_set_volume(&pulse, pulse.head,
+			rc = set_volume(&pulse, pulse.head,
 					CLAMP(pulse.head->volume_percent - value.l, 0, 150));
 			break;
 		case ACTION_MUTE:
-			rc = sink_mute(&pulse, pulse.head);
+			rc = mute(&pulse, pulse.head);
 			break;
 		case ACTION_UNMUTE:
-			rc = sink_unmute(&pulse, pulse.head);
+			rc = unmute(&pulse, pulse.head);
 			break;
 		case ACTION_TOGGLE:
-			rc = sink_set_mute(&pulse, pulse.head, !pulse.head->mute);
+			rc = set_mute(&pulse, pulse.head, !pulse.head->mute);
 			break;
 		case ACTION_SETSINK:
 			rc = set_default_sink(&pulse, value.c);

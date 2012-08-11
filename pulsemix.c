@@ -69,13 +69,7 @@ enum action {
 	ACTION_INVALID
 };
 
-enum type {
-	TYPE_SINK,
-	TYPE_SOURCE
-};
-
 struct io_t {
-	enum type type;
 	uint32_t idx;
 	char *name;
 	char *desc;
@@ -130,7 +124,6 @@ static struct io_t *sink_new(const pa_sink_info *info)
 {
 	struct io_t *sink = calloc(1, sizeof(struct io_t));
 
-	sink->type = TYPE_SINK;
 	sink->idx = info->index;
 	sink->name = strdup(info->name);
 	sink->desc = strdup(info->description);
@@ -151,7 +144,6 @@ static struct io_t *source_new(const pa_source_info *info)
 {
 	struct io_t *source = calloc(1, sizeof(struct io_t));
 
-	source->type = TYPE_SOURCE;
 	source->idx = info->index;
 	source->name = strdup(info->name);
 	source->desc = strdup(info->description);

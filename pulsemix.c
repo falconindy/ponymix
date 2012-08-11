@@ -57,6 +57,8 @@ enum action {
 	ACTION_LIST,
 	ACTION_GETVOL,
 	ACTION_SETVOL,
+	ACTION_GETBAL,
+	ACTION_SETBAL,
 	ACTION_INCREASE,
 	ACTION_DECREASE,
 	ACTION_MUTE,
@@ -79,7 +81,9 @@ struct io_t {
 	char *desc;
 	const char *pp_name;
 	pa_cvolume volume;
+	pa_channel_map channels;
 	int volume_percent;
+	int balance;
 	int mute;
 
 	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
@@ -118,6 +122,8 @@ static void populate(struct io_t *node)
 {
 	node->volume_percent = (int)(((double)pa_cvolume_avg(&node->volume) * 100)
 			/ PA_VOLUME_NORM);
+	node->balance = (int)((double)pa_cvolume_get_balance(&node->volume,
+			&node->channels) * 100);
 }
 
 static struct io_t *sink_new(const pa_sink_info *info)
@@ -130,6 +136,7 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	sink->desc = strdup(info->description);
 	sink->pp_name = "sink";
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
+	memcpy(&sink->channels, &info->channel_map, sizeof(pa_channel_map));
 	sink->mute = info->mute;
 
 	sink->fn_mute = pa_context_set_sink_mute_by_index;
@@ -150,6 +157,7 @@ static struct io_t *source_new(const pa_source_info *info)
 	source->desc = strdup(info->description);
 	source->pp_name = "source";
 	memcpy(&source->volume, &info->volume, sizeof(pa_cvolume));
+	memcpy(&source->channels, &info->channel_map, sizeof(pa_channel_map));
 	source->mute = info->mute;
 
 	source->fn_mute = pa_context_set_source_mute_by_index;
@@ -252,6 +260,35 @@ static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 	else {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to set volume: %s\n", pa_strerror(err));
+	}
+
+	pa_operation_unref(op);
+
+	return !pulse->success;
+}
+
+static void get_balance(struct pulseaudio_t *pulse)
+{
+	printf("%d\n", pulse->head->balance);
+}
+
+static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
+{
+	pa_cvolume *vol;
+	pa_operation *op;
+
+	if (pa_channel_map_valid(&dev->channels) == 0)
+		errx(EXIT_FAILURE, "can't set balance on that device.");
+
+	vol = pa_cvolume_set_balance(&dev->volume, &dev->channels, v / 100.0);
+	op = dev->fn_setvol(pulse->cxt, dev->idx, vol, success_cb, pulse);
+	pulse_async_wait(pulse, op);
+
+	if (pulse->success)
+		printf("%ld\n", v);
+	else {
+		int err = pa_context_errno(pulse->cxt);
+		errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -433,6 +470,8 @@ void usage(FILE *out)
 	fputs("  list                list available sinks\n", out);
 	fputs("  get-volume          get volume for sink\n", out);
 	fputs("  set-volume VALUE    set volume for sink\n", out);
+	fputs("  get-balance         get balance for sink\n", out);
+	fputs("  set-balance VALUE   set balance for sink\n", out);
 	fputs("  increase VALUE      increase volume\n", out);
 	fputs("  decrease VALUE      decrease volume\n", out);
 	fputs("  mute                mute active sink\n", out);
@@ -454,6 +493,10 @@ enum action string_to_verb(const char *string)
 		return ACTION_GETVOL;
 	else if (strcmp(string, "set-volume") == 0)
 		return ACTION_SETVOL;
+	else if (strcmp(string, "get-balance") == 0)
+		return ACTION_GETBAL;
+	else if (strcmp(string, "set-balance") == 0)
+		return ACTION_SETBAL;
 	else if (strcmp(string, "increase") == 0)
 		return ACTION_INCREASE;
 	else if (strcmp(string, "decrease") == 0)
@@ -523,6 +566,7 @@ int main(int argc, char *argv[])
 
 	optind++;
 	if (verb == ACTION_SETVOL ||
+			verb == ACTION_SETBAL ||
 			verb == ACTION_INCREASE ||
 			verb == ACTION_DECREASE)
 		if (optind == argc)
@@ -569,6 +613,13 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_SETVOL:
 			rc = set_volume(&pulse, pulse.head, value);
+			break;
+		case ACTION_GETBAL:
+			get_balance(&pulse);
+			break;
+		case ACTION_SETBAL:
+			rc = set_balance(&pulse, pulse.head,
+					CLAMP(value, -100, 100));
 			break;
 		case ACTION_INCREASE:
 			rc = set_volume(&pulse, pulse.head,

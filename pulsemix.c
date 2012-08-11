@@ -66,6 +66,7 @@ enum action {
 	ACTION_MUTE,
 	ACTION_UNMUTE,
 	ACTION_TOGGLE,
+	ACTION_ISMUTED,
 	ACTION_SETSINK,
 	ACTION_INVALID
 };
@@ -443,6 +444,7 @@ void usage(FILE *out)
 	fputs("  mute                mute active sink\n", out);
 	fputs("  unmute              unmute active sink\n", out);
 	fputs("  toggle              toggle mute\n", out);
+	fputs("  is-muted            check if muted\n", out);
 	fputs("  set-sink SINKNAME   set default sink\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -466,6 +468,8 @@ enum action string_to_verb(const char *string)
 		return ACTION_UNMUTE;
 	else if (strcmp(string, "toggle") == 0)
 		return ACTION_TOGGLE;
+	else if (strcmp(string, "is-muted") == 0)
+		return ACTION_ISMUTED;
 	else if (strcmp(string, "set-sink") == 0)
 		return ACTION_SETSINK;
 
@@ -582,6 +586,9 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_TOGGLE:
 			rc = set_mute(&pulse, pulse.head, !pulse.head->mute);
+			break;
+		case ACTION_ISMUTED:
+			rc = !pulse.head->mute;
 			break;
 		case ACTION_SETSINK:
 			rc = set_default_sink(&pulse, value.c);

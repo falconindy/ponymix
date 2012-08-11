@@ -421,14 +421,12 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 
 static int pulse_connect(struct pulseaudio_t *pulse)
 {
-	int r;
-
 	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
 	while (pulse->state == STATE_CONNECTING)
-		pa_mainloop_iterate(pulse->mainloop, 1, &r);
+		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 
 	if (pulse->state == STATE_ERROR) {
-		r = pa_context_errno(pulse->cxt);
+		int r = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to connect to pulse daemon: %s\n",
 				pa_strerror(r));
 		return 1;

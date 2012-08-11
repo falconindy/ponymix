@@ -116,6 +116,12 @@ int xstrtol(const char *str, long *out)
 	return 0;
 }
 
+static void populate(struct io_t *node)
+{
+	node->volume_percent = (int)(((double)pa_cvolume_avg(&node->volume) * 100)
+			/ PA_VOLUME_NORM);
+}
+
 static struct io_t *sink_new(const pa_sink_info *info)
 {
 	struct io_t *sink = calloc(1, sizeof(struct io_t));
@@ -126,14 +132,32 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	sink->desc = strdup(info->description);
 	sink->pp_name = "sink";
 	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	sink->volume_percent = (int)(((double)pa_cvolume_avg(&sink->volume) * 100)
-			/ PA_VOLUME_NORM);
 	sink->mute = info->mute;
 
 	sink->fn_mute = pa_context_set_sink_mute_by_index;
 	sink->fn_setvol = pa_context_set_sink_volume_by_index;
 
+	populate(sink);
 	return sink;
+}
+
+static struct io_t *source_new(const pa_source_info *info)
+{
+	struct io_t *source = calloc(1, sizeof(struct io_t));
+
+	source->type = TYPE_SOURCE;
+	source->idx = info->index;
+	source->name = strdup(info->name);
+	source->desc = strdup(info->description);
+	source->pp_name = "source";
+	memcpy(&source->volume, &info->volume, sizeof(pa_cvolume));
+	source->mute = info->mute;
+
+	source->fn_mute = pa_context_set_source_mute_by_index;
+	source->fn_setvol = pa_context_set_source_volume_by_index;
+
+	populate(source);
+	return source;
 }
 
 static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
@@ -146,10 +170,21 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 		return;
 
 	sink = sink_new(i);
-
-	if (pulse->head != NULL)
-		sink->next = pulse->head;
+	sink->next = pulse->head;
 	pulse->head = sink;
+}
+
+static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
+{
+	struct pulseaudio_t *pulse = raw;
+	struct io_t *source;
+
+	if (eol)
+		return;
+
+	source = source_new(i);
+	source->next = pulse->head;
+	pulse->head = source;
 }
 
 static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
@@ -158,6 +193,13 @@ static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
 	const char **sink_name = (const char **)raw;
 
 	*sink_name = i->default_sink_name;
+}
+
+static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
+{
+	const char **source_name = (const char **)raw;
+
+	*source_name = i->default_source_name;
 }
 
 static void state_cb(pa_context UNUSED *c, void *raw)
@@ -286,6 +328,25 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	get_sink_by_name(pulse, sink_name);
 }
 
+static void get_source_by_name(struct pulseaudio_t *pulse, const char *name)
+{
+	pa_operation *op = pa_context_get_source_info_by_name(pulse->cxt, name,
+			source_add_cb, pulse);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+}
+
+static void get_default_source(struct pulseaudio_t *pulse)
+{
+	const char *source_name;
+	pa_operation *op = pa_context_get_server_info(pulse->cxt, source_info_cb,
+			&source_name);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+
+	get_source_by_name(pulse, source_name);
+}
+
 static int set_default_sink(struct pulseaudio_t *pulse, const char *sinkname)
 {
 	pa_operation *op;
@@ -360,19 +421,20 @@ void usage(FILE *out)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
-	fputs(" -h, --help,        display this help and exit\n", out);
-	fputs(" -s, --sink <name>  control a sink other than the default\n", out);
+	fputs(" -h, --help,          display this help and exit\n", out);
+	fputs(" -o, --sink <name>    control a sink other than the default\n", out);
+	fputs(" -i, --source <name>  control a source\n", out);
 
 	fputs("\nCommands:\n", out);
-	fputs("  list               list available sinks\n", out);
-	fputs("  get-volume         get volume for sink\n", out);
-	fputs("  set-volume VALUE   set volume for sink\n", out);
-	fputs("  increase VALUE     increase volume\n", out);
-	fputs("  decrease VALUE     decrease volume\n", out);
-	fputs("  mute               mute active sink\n", out);
-	fputs("  unmute             unmute active sink\n", out);
-	fputs("  toggle             toggle mute\n", out);
-	fputs("  set-sink SINKNAME  set default sink\n", out);
+	fputs("  list                list available sinks\n", out);
+	fputs("  get-volume          get volume for sink\n", out);
+	fputs("  set-volume VALUE    set volume for sink\n", out);
+	fputs("  increase VALUE      increase volume\n", out);
+	fputs("  decrease VALUE      decrease volume\n", out);
+	fputs("  mute                mute active sink\n", out);
+	fputs("  unmute              unmute active sink\n", out);
+	fputs("  toggle              toggle mute\n", out);
+	fputs("  set-sink SINKNAME   set default sink\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -405,26 +467,40 @@ int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
 	enum action verb;
-	char *sink = NULL;
+	char *id = NULL;
 	union arg_t value;
 	int rc = 0;
 
+	const char *pp_name = "sink";
+	void (*fn_get_default)(struct pulseaudio_t *) = get_default_sink;
+	void (*fn_get_by_name)(struct pulseaudio_t *, const char*) = get_sink_by_name;
+
 	static const struct option opts[] = {
 		{ "help", no_argument, 0, 'h' },
-		{ "sink", required_argument, 0, 's' },
+		{ "sink", optional_argument, 0, 'o' },
+		{ "source", optional_argument, 0, 'i' },
 		{ 0, 0, 0, 0 },
 	};
 
 	for (;;) {
-		int opt = getopt_long(argc, argv, "hs:", opts, NULL);
+		int opt = getopt_long(argc, argv, "ho:i:", opts, NULL);
 		if (opt == -1)
 			break;
 
 		switch (opt) {
 		case 'h':
 			usage(stdout);
-		case 's':
-			sink = optarg;
+		case 'o':
+			id = optarg;
+			fn_get_default = get_default_sink;
+			fn_get_by_name = get_sink_by_name;
+			pp_name = "sink";
+			break;
+		case 'i':
+			id = optarg;
+			fn_get_default = get_default_source;
+			fn_get_by_name = get_source_by_name;
+			pp_name = "source";
 			break;
 		default:
 			exit(1);
@@ -465,13 +541,13 @@ int main(int argc, char *argv[])
 		print_all(&pulse);
 	} else {
 		/* determine sink */
-		if (sink) {
-			get_sink_by_name(&pulse, sink);
-		} else
-			get_default_sink(&pulse);
+		if (id && fn_get_by_name)
+			fn_get_by_name(&pulse, id);
+		else if (fn_get_default)
+			fn_get_default(&pulse);
 
-		if(pulse.head == NULL)
-			errx(EXIT_FAILURE, "sink not found: %s", sink ? sink : "default");
+		if (pulse.head == NULL)
+			errx(EXIT_FAILURE, "%s not found: %s", pp_name, id ? id : "default");
 
 		switch (verb) {
 		case ACTION_GETVOL:

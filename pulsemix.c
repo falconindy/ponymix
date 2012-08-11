@@ -58,7 +58,8 @@ enum connectstate {
 };
 
 enum action {
-	ACTION_LIST = 0,
+	ACTION_DEFAULTS = 0,
+	ACTION_LIST,
 	ACTION_GETVOL,
 	ACTION_SETVOL,
 	ACTION_INCREASE,
@@ -436,6 +437,7 @@ void usage(FILE *out)
 	fputs(" -i, --source <name>  control a source\n", out);
 
 	fputs("\nCommands:\n", out);
+	fputs("  defaults            list default devices\n", out);
 	fputs("  list                list available sinks\n", out);
 	fputs("  get-volume          get volume for sink\n", out);
 	fputs("  set-volume VALUE    set volume for sink\n", out);
@@ -452,7 +454,9 @@ void usage(FILE *out)
 
 enum action string_to_verb(const char *string)
 {
-	if (strcmp(string, "list") == 0)
+	if (strcmp(string, "defaults") == 0)
+		return ACTION_DEFAULTS;
+	else if (strcmp(string, "list") == 0)
 		return ACTION_LIST;
 	else if (strcmp(string, "get-volume") == 0)
 		return ACTION_GETVOL;
@@ -521,7 +525,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* string -> enum */
-	verb = (optind == argc) ? ACTION_LIST : string_to_verb(argv[optind]);
+	verb = (optind == argc) ? ACTION_DEFAULTS : string_to_verb(argv[optind]);
 	if (verb == ACTION_INVALID)
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 
@@ -549,7 +553,11 @@ int main(int argc, char *argv[])
 	if (pulse_connect(&pulse) != 0)
 		return 1;
 
-	if (verb == ACTION_LIST) {
+	if (verb == ACTION_DEFAULTS) {
+		get_default_sink(&pulse);
+		get_default_source(&pulse);
+		print_all(&pulse);
+	} else if (verb == ACTION_LIST) {
 		get_sinks(&pulse);
 		get_sources(&pulse);
 		print_all(&pulse);

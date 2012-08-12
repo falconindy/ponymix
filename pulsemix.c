@@ -431,10 +431,14 @@ static void get_sinks(struct pulseaudio_t *pulse, enum mode mode)
 {
 	pa_operation *op;
 
-	if (mode == MODE_APP)
+	switch (mode) {
+	case MODE_APP:
 		op = pa_context_get_sink_input_info_list(pulse->cxt, sink_input_add_cb, pulse);
-	else
+		break;
+	case MODE_DEVICE:
+	default:
 		op = pa_context_get_sink_info_list(pulse->cxt, sink_add_cb, pulse);
+	}
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
@@ -444,14 +448,19 @@ static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum 
 {
 	pa_operation *op;
 
-	if (mode == MODE_APP) {
+	switch (mode) {
+	case MODE_APP:
+	{
 		long id;
-		int r = xstrtol(name, &id);
-		if (r < 0)
+		if (xstrtol(name, &id) < 0)
 			errx(EXIT_FAILURE, "application sink not id: %s", name);
 		op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, pulse);
-	} else
+		break;
+	}
+	case MODE_DEVICE:
+	default:
 		op = pa_context_get_sink_info_by_name(pulse->cxt, name, sink_add_cb, pulse);
+	}
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
@@ -472,10 +481,14 @@ static void get_sources(struct pulseaudio_t *pulse, enum mode mode)
 {
 	pa_operation *op;
 
-	if (mode == MODE_APP)
+	switch (mode) {
+	case MODE_APP:
 		op = pa_context_get_source_output_info_list(pulse->cxt, source_output_add_cb, pulse);
-	else
+		break;
+	case MODE_DEVICE:
+	default:
 		op = pa_context_get_source_info_list(pulse->cxt, source_add_cb, pulse);
+	}
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
@@ -485,14 +498,19 @@ static void get_source_by_name(struct pulseaudio_t *pulse, const char *name, enu
 {
 	pa_operation *op;
 
-	if (mode == MODE_APP) {
+	switch (mode) {
+	case MODE_APP:
+	{
 		long id;
-		int r = xstrtol(name, &id);
-		if (r < 0)
+		if (xstrtol(name, &id) < 0)
 			errx(EXIT_FAILURE, "application source not id: %s", name);
 		op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, pulse);
-	} else
+		break;
+	}
+	case MODE_DEVICE:
+	default:
 		op = pa_context_get_source_info_by_name(pulse->cxt, name, source_add_cb, pulse);
+	}
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);

@@ -72,6 +72,7 @@ enum action {
 	ACTION_TOGGLE,
 	ACTION_ISMUTED,
 	ACTION_SETDEFAULT,
+	ACTION_KILL,
 	ACTION_INVALID
 };
 
@@ -89,6 +90,7 @@ struct io_t {
 	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_setdefault)(pa_context *, const char *, pa_context_success_cb_t, void *);
+	pa_operation *(*fn_kill)(pa_context *, uint32_t, pa_context_success_cb_t, void *);
 
 	struct io_t *next;
 };
@@ -160,7 +162,7 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 
 	sink->fn_mute = pa_context_set_sink_input_mute;
 	sink->fn_setvol = pa_context_set_sink_input_volume;
-	sink->fn_setdefault = NULL;
+	sink->fn_kill = pa_context_kill_sink_input;
 
 	populate(sink);
 	return sink;
@@ -201,6 +203,7 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 	source->fn_mute = pa_context_set_source_output_mute;
 	source->fn_setvol = pa_context_set_source_output_volume;
 	source->fn_setdefault = NULL;
+	source->fn_kill = pa_context_kill_source_output;
 
 	populate(source);
 	return source;
@@ -367,6 +370,26 @@ static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to mute device: %s\n", pa_strerror(err));
+	}
+
+	pa_operation_unref(op);
+
+	return !pulse->success;
+}
+
+static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
+{
+	pa_operation *op;
+
+	if (dev->fn_kill == NULL)
+		errx(EXIT_FAILURE, "only clients can be killed");
+
+	op = dev->fn_kill(pulse->cxt, dev->idx, success_cb, pulse);
+	pulse_async_wait(pulse, op);
+
+	if (!pulse->success) {
+		int err = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to kill client: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -549,7 +572,6 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs(" -o, --sink=<name>    control a sink other than the default\n", out);
 	fputs(" -i, --source=<name>  control a source\n", out);
 
-	/* TODO: add kill */
 	fputs("\nCommands:\n", out);
 	fputs("  defaults            list default devices\n", out);
 	fputs("  list                list available devices\n", out);
@@ -563,6 +585,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  unmute              unmute device\n", out);
 	fputs("  toggle              toggle mute\n", out);
 	fputs("  is-muted            check if muted\n", out);
+	fputs("  kill                kill an application's stream\n", out);
 	fputs("  set-default NAME    set default device\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -594,6 +617,8 @@ static enum action string_to_verb(const char *string)
 		return ACTION_TOGGLE;
 	else if (strcmp(string, "is-muted") == 0)
 		return ACTION_ISMUTED;
+	else if (strcmp(string, "kill") == 0)
+		return ACTION_KILL;
 	else if (strcmp(string, "set-default") == 0)
 		return ACTION_SETDEFAULT;
 
@@ -738,6 +763,9 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_ISMUTED:
 			rc = !pulse.head->mute;
+			break;
+		case ACTION_KILL:
+			rc = kill_client(&pulse, pulse.head);
 			break;
 		case ACTION_SETDEFAULT:
 			rc = set_default(&pulse, pulse.head);

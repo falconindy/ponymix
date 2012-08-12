@@ -779,7 +779,7 @@ int main(int argc, char *argv[])
 			printf("%d\n", pulse.head->volume_percent);
 			break;
 		case ACTION_SETVOL:
-			rc = set_volume(&pulse, pulse.head, value);
+			rc = set_volume(&pulse, pulse.head, CLAMP(value, 0, 150));
 			break;
 		case ACTION_GETBAL:
 			printf("%d\n", pulse.head->balance);
@@ -790,11 +790,11 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_INCREASE:
 			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent + value, 0, 150));
+					CLAMP(pulse.head->volume_percent + value, 0, 100));
 			break;
 		case ACTION_DECREASE:
 			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent - value, 0, 150));
+					CLAMP(pulse.head->volume_percent - value, 0, 100));
 			break;
 		case ACTION_MUTE:
 			rc = set_mute(&pulse, pulse.head, 1);

@@ -72,6 +72,7 @@ enum action {
 	ACTION_TOGGLE,
 	ACTION_ISMUTED,
 	ACTION_SETDEFAULT,
+	ACTION_MOVE,
 	ACTION_KILL,
 	ACTION_INVALID
 };
@@ -90,6 +91,7 @@ struct io_t {
 	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_setdefault)(pa_context *, const char *, pa_context_success_cb_t, void *);
+	pa_operation *(*fn_move)(pa_context *, uint32_t, uint32_t, pa_context_success_cb_t, void *);
 	pa_operation *(*fn_kill)(pa_context *, uint32_t, pa_context_success_cb_t, void *);
 
 	struct io_t *next;
@@ -162,6 +164,7 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 
 	sink->fn_mute = pa_context_set_sink_input_mute;
 	sink->fn_setvol = pa_context_set_sink_input_volume;
+	sink->fn_move = pa_context_move_sink_input_by_index;
 	sink->fn_kill = pa_context_kill_sink_input;
 
 	populate(sink);
@@ -202,7 +205,7 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 
 	source->fn_mute = pa_context_set_source_output_mute;
 	source->fn_setvol = pa_context_set_source_output_volume;
-	source->fn_setdefault = NULL;
+	source->fn_move = pa_context_move_source_output_by_index;
 	source->fn_kill = pa_context_kill_source_output;
 
 	populate(source);
@@ -390,6 +393,30 @@ static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 	if (!pulse->success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to kill client: %s\n", pa_strerror(err));
+	}
+
+	pa_operation_unref(op);
+
+	return !pulse->success;
+}
+
+static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
+{
+	pa_operation* op;
+
+	if (dev->next == NULL)
+		errx(EXIT_FAILURE, "no destination to move to");
+	if (dev->next->fn_move == NULL)
+		errx(EXIT_FAILURE, "only clients can be moved");
+
+	op = dev->next->fn_move(pulse->cxt, dev->next->idx, dev->idx, success_cb,
+			pulse);
+
+	pulse_async_wait(pulse, op);
+
+	if (!pulse->success) {
+		int err = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to move client: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -590,6 +617,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  set-default NAME    set default device\n", out);
 
 	fputs("\nApplication Commands:\n", out);
+	fputs("  move NAME           move application stream to device\n", out);
 	fputs("  kill                kill an application's stream\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -621,6 +649,8 @@ static enum action string_to_verb(const char *string)
 		return ACTION_TOGGLE;
 	else if (strcmp(string, "is-muted") == 0)
 		return ACTION_ISMUTED;
+	else if (strcmp(string, "move") == 0)
+		return ACTION_MOVE;
 	else if (strcmp(string, "kill") == 0)
 		return ACTION_KILL;
 	else if (strcmp(string, "set-default") == 0)
@@ -633,7 +663,7 @@ int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
 	enum action verb;
-	char *id = NULL;
+	char *id = NULL, *arg = NULL;
 	long value = 0;
 	enum mode mode = MODE_DEVICE;
 	int rc = 0;
@@ -705,6 +735,11 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else
 			id = argv[optind];
+	} else if (verb == ACTION_MOVE) {
+		if (optind == argc)
+			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
+		else
+			arg = argv[optind];
 	}
 
 	/* initialize connection */
@@ -733,6 +768,9 @@ int main(int argc, char *argv[])
 			else
 				errx(EXIT_FAILURE, "%s not found: %s", pp_name, id ? id : "default");
 		}
+
+		if (arg && fn_get_by_name)
+			fn_get_by_name(&pulse, arg, MODE_DEVICE);
 
 		switch (verb) {
 		case ACTION_GETVOL:
@@ -767,6 +805,9 @@ int main(int argc, char *argv[])
 			break;
 		case ACTION_ISMUTED:
 			rc = !pulse.head->mute;
+			break;
+		case ACTION_MOVE:
+			rc = move_client(&pulse, pulse.head);
 			break;
 		case ACTION_KILL:
 			rc = kill_client(&pulse, pulse.head);

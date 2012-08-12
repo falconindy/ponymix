@@ -572,7 +572,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs(" -o, --sink=<name>    control a sink other than the default\n", out);
 	fputs(" -i, --source=<name>  control a source\n", out);
 
-	fputs("\nCommands:\n", out);
+	fputs("\nCommon Commands:\n", out);
 	fputs("  defaults            list default devices\n", out);
 	fputs("  list                list available devices\n", out);
 	fputs("  get-volume          get volume for device\n", out);
@@ -585,8 +585,12 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  unmute              unmute device\n", out);
 	fputs("  toggle              toggle mute\n", out);
 	fputs("  is-muted            check if muted\n", out);
-	fputs("  kill                kill an application's stream\n", out);
+
+	fputs("\nDevice Commands:\n", out);
 	fputs("  set-default NAME    set default device\n", out);
+
+	fputs("\nApplication Commands:\n", out);
+	fputs("  kill                kill an application's stream\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }

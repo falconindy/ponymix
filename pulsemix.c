@@ -573,7 +573,6 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs(" -i, --source=<name>  control a source\n", out);
 
 	fputs("\nCommon Commands:\n", out);
-	fputs("  defaults            list default devices\n", out);
 	fputs("  list                list available devices\n", out);
 	fputs("  get-volume          get volume for device\n", out);
 	fputs("  set-volume VALUE    set volume for device\n", out);
@@ -587,6 +586,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  is-muted            check if muted\n", out);
 
 	fputs("\nDevice Commands:\n", out);
+	fputs("  defaults            list default devices\n", out);
 	fputs("  set-default NAME    set default device\n", out);
 
 	fputs("\nApplication Commands:\n", out);
@@ -683,7 +683,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* string -> enum */
-	verb = (optind == argc) ? ACTION_DEFAULTS : string_to_verb(argv[optind]);
+	verb = (optind == argc) ? (mode ? ACTION_LIST : ACTION_DEFAULTS) : string_to_verb(argv[optind]);
 	if (verb == ACTION_INVALID)
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 

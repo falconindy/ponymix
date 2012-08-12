@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
 	};
 
 	for (;;) {
-		int opt = getopt_long(argc, argv, "hao:i:", opts, NULL);
+		int opt = getopt_long(argc, argv, "hao::i::", opts, NULL);
 		if (opt == -1)
 			break;
 

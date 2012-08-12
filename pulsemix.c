@@ -124,7 +124,7 @@ static int xstrtol(const char *str, long *out)
 	return 0;
 }
 
-static void populate(struct io_t *node)
+static void populate_levels(struct io_t *node)
 {
 	node->volume_percent = (int)(((double)pa_cvolume_avg(&node->volume) * 100)
 			/ PA_VOLUME_NORM);
@@ -148,7 +148,7 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	sink->op.setvol = pa_context_set_sink_volume_by_index;
 	sink->op.setdefault = pa_context_set_default_sink;
 
-	populate(sink);
+	populate_levels(sink);
 	return sink;
 }
 
@@ -169,7 +169,7 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 	sink->op.move = pa_context_move_sink_input_by_index;
 	sink->op.kill = pa_context_kill_sink_input;
 
-	populate(sink);
+	populate_levels(sink);
 	return sink;
 }
 
@@ -189,7 +189,7 @@ static struct io_t *source_new(const pa_source_info *info)
 	source->op.setvol = pa_context_set_source_volume_by_index;
 	source->op.setdefault = pa_context_set_default_source;
 
-	populate(source);
+	populate_levels(source);
 	return source;
 }
 
@@ -210,7 +210,7 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 	source->op.move = pa_context_move_source_output_by_index;
 	source->op.kill = pa_context_kill_source_output;
 
-	populate(source);
+	populate_levels(source);
 	return source;
 }
 

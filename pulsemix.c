@@ -132,85 +132,69 @@ static void populate_levels(struct io_t *node)
 			&node->channels) * 100);
 }
 
+#define IO_NEW(io, info, pp) \
+	io = calloc(1, sizeof(struct io_t)); \
+	io->idx = info->index; \
+	io->mute = info->mute; \
+	io->name = strdup(info->name); \
+	io->pp_name = pp; \
+	memcpy(&io->volume, &info->volume, sizeof(pa_cvolume)); \
+	memcpy(&io->channels, &info->channel_map, sizeof(pa_channel_map)); \
+	populate_levels(io);
+
 static struct io_t *sink_new(const pa_sink_info *info)
 {
-	struct io_t *sink = calloc(1, sizeof(struct io_t));
+	struct io_t *sink;
 
-	sink->idx = info->index;
-	sink->name = strdup(info->name);
+	IO_NEW(sink, info, "sink");
 	sink->desc = strdup(info->description);
-	sink->pp_name = "sink";
-	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	memcpy(&sink->channels, &info->channel_map, sizeof(pa_channel_map));
-	sink->mute = info->mute;
-
 	sink->op.mute = pa_context_set_sink_mute_by_index;
 	sink->op.setvol = pa_context_set_sink_volume_by_index;
 	sink->op.setdefault = pa_context_set_default_sink;
 
-	populate_levels(sink);
 	return sink;
 }
 
 static struct io_t *sink_input_new(const pa_sink_input_info *info)
 {
-	struct io_t *sink = calloc(1, sizeof(struct io_t));
+	struct io_t *sink;
 
-	sink->idx = info->index;
-	sink->name = strdup(info->name);
-	sink->desc = strdup(pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
-	sink->pp_name = "sink";
-	memcpy(&sink->volume, &info->volume, sizeof(pa_cvolume));
-	memcpy(&sink->channels, &info->channel_map, sizeof(pa_channel_map));
-	sink->mute = info->mute;
-
+	IO_NEW(sink, info, "sink");
+	sink->desc = strdup(
+		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	sink->op.mute = pa_context_set_sink_input_mute;
 	sink->op.setvol = pa_context_set_sink_input_volume;
 	sink->op.move = pa_context_move_sink_input_by_index;
 	sink->op.kill = pa_context_kill_sink_input;
 
-	populate_levels(sink);
 	return sink;
 }
 
 static struct io_t *source_new(const pa_source_info *info)
 {
-	struct io_t *source = calloc(1, sizeof(struct io_t));
+	struct io_t *source;
 
-	source->idx = info->index;
-	source->name = strdup(info->name);
+	IO_NEW(source, info, "source");
 	source->desc = strdup(info->description);
-	source->pp_name = "source";
-	memcpy(&source->volume, &info->volume, sizeof(pa_cvolume));
-	memcpy(&source->channels, &info->channel_map, sizeof(pa_channel_map));
-	source->mute = info->mute;
-
 	source->op.mute = pa_context_set_source_mute_by_index;
 	source->op.setvol = pa_context_set_source_volume_by_index;
 	source->op.setdefault = pa_context_set_default_source;
 
-	populate_levels(source);
 	return source;
 }
 
 static struct io_t *source_output_new(const pa_source_output_info *info)
 {
-	struct io_t *source = calloc(1, sizeof(struct io_t));
+	struct io_t *source;
 
-	source->idx = info->index;
-	source->name = strdup(info->name);
-	source->desc = strdup(pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
-	source->pp_name = "source";
-	memcpy(&source->volume, &info->volume, sizeof(pa_cvolume));
-	memcpy(&source->channels, &info->channel_map, sizeof(pa_channel_map));
-	source->mute = info->mute;
-
+	IO_NEW(source, info, "source");
+	source->desc = strdup(
+		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	source->op.mute = pa_context_set_source_output_mute;
 	source->op.setvol = pa_context_set_source_output_volume;
 	source->op.move = pa_context_move_source_output_by_index;
 	source->op.kill = pa_context_kill_source_output;
 
-	populate_levels(source);
 	return source;
 }
 

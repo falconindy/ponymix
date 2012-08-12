@@ -427,7 +427,7 @@ static void print_all(struct pulseaudio_t *pulse)
 	}
 }
 
-static void get_sinks(struct pulseaudio_t *pulse, enum mode mode)
+static void populate_sinks(struct pulseaudio_t *pulse, enum mode mode)
 {
 	pa_operation *op;
 
@@ -477,7 +477,7 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	get_sink_by_name(pulse, sink_name, MODE_DEVICE);
 }
 
-static void get_sources(struct pulseaudio_t *pulse, enum mode mode)
+static void populate_sources(struct pulseaudio_t *pulse, enum mode mode)
 {
 	pa_operation *op;
 
@@ -758,8 +758,8 @@ int main(int argc, char *argv[])
 		get_default_source(&pulse);
 		print_all(&pulse);
 	} else if (verb == ACTION_LIST) {
-		get_sinks(&pulse, mode);
-		get_sources(&pulse, mode);
+		populate_sinks(&pulse, mode);
+		populate_sources(&pulse, mode);
 		print_all(&pulse);
 	} else {
 		/* determine sink */

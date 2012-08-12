@@ -88,11 +88,13 @@ struct io_t {
 	int balance;
 	int mute;
 
-	pa_operation *(*fn_mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
-	pa_operation *(*fn_setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
-	pa_operation *(*fn_setdefault)(pa_context *, const char *, pa_context_success_cb_t, void *);
-	pa_operation *(*fn_move)(pa_context *, uint32_t, uint32_t, pa_context_success_cb_t, void *);
-	pa_operation *(*fn_kill)(pa_context *, uint32_t, pa_context_success_cb_t, void *);
+	struct ops_t {
+		pa_operation *(*mute)(pa_context *, uint32_t, int, pa_context_success_cb_t, void *);
+		pa_operation *(*setvol)(pa_context *, uint32_t, const pa_cvolume *, pa_context_success_cb_t, void *);
+		pa_operation *(*setdefault)(pa_context *, const char *, pa_context_success_cb_t, void *);
+		pa_operation *(*move)(pa_context *, uint32_t, uint32_t, pa_context_success_cb_t, void *);
+		pa_operation *(*kill)(pa_context *, uint32_t, pa_context_success_cb_t, void *);
+	} op;
 
 	struct io_t *next;
 };
@@ -142,9 +144,9 @@ static struct io_t *sink_new(const pa_sink_info *info)
 	memcpy(&sink->channels, &info->channel_map, sizeof(pa_channel_map));
 	sink->mute = info->mute;
 
-	sink->fn_mute = pa_context_set_sink_mute_by_index;
-	sink->fn_setvol = pa_context_set_sink_volume_by_index;
-	sink->fn_setdefault = pa_context_set_default_sink;
+	sink->op.mute = pa_context_set_sink_mute_by_index;
+	sink->op.setvol = pa_context_set_sink_volume_by_index;
+	sink->op.setdefault = pa_context_set_default_sink;
 
 	populate(sink);
 	return sink;
@@ -162,10 +164,10 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 	memcpy(&sink->channels, &info->channel_map, sizeof(pa_channel_map));
 	sink->mute = info->mute;
 
-	sink->fn_mute = pa_context_set_sink_input_mute;
-	sink->fn_setvol = pa_context_set_sink_input_volume;
-	sink->fn_move = pa_context_move_sink_input_by_index;
-	sink->fn_kill = pa_context_kill_sink_input;
+	sink->op.mute = pa_context_set_sink_input_mute;
+	sink->op.setvol = pa_context_set_sink_input_volume;
+	sink->op.move = pa_context_move_sink_input_by_index;
+	sink->op.kill = pa_context_kill_sink_input;
 
 	populate(sink);
 	return sink;
@@ -183,9 +185,9 @@ static struct io_t *source_new(const pa_source_info *info)
 	memcpy(&source->channels, &info->channel_map, sizeof(pa_channel_map));
 	source->mute = info->mute;
 
-	source->fn_mute = pa_context_set_source_mute_by_index;
-	source->fn_setvol = pa_context_set_source_volume_by_index;
-	source->fn_setdefault = pa_context_set_default_source;
+	source->op.mute = pa_context_set_source_mute_by_index;
+	source->op.setvol = pa_context_set_source_volume_by_index;
+	source->op.setdefault = pa_context_set_default_source;
 
 	populate(source);
 	return source;
@@ -203,10 +205,10 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 	memcpy(&source->channels, &info->channel_map, sizeof(pa_channel_map));
 	source->mute = info->mute;
 
-	source->fn_mute = pa_context_set_source_output_mute;
-	source->fn_setvol = pa_context_set_source_output_volume;
-	source->fn_move = pa_context_move_source_output_by_index;
-	source->fn_kill = pa_context_kill_source_output;
+	source->op.mute = pa_context_set_source_output_mute;
+	source->op.setvol = pa_context_set_source_output_volume;
+	source->op.move = pa_context_move_source_output_by_index;
+	source->op.kill = pa_context_kill_source_output;
 
 	populate(source);
 	return source;
@@ -318,7 +320,7 @@ static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 {
 	pa_cvolume *vol = pa_cvolume_set(&dev->volume, dev->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
-	pa_operation *op = pulse->head->fn_setvol(pulse->cxt, dev->idx, vol,
+	pa_operation *op = pulse->head->op.setvol(pulse->cxt, dev->idx, vol,
 			success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
@@ -343,7 +345,7 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 		errx(EXIT_FAILURE, "can't set balance on that device.");
 
 	vol = pa_cvolume_set_balance(&dev->volume, &dev->channels, v / 100.0);
-	op = dev->fn_setvol(pulse->cxt, dev->idx, vol, success_cb, pulse);
+	op = dev->op.setvol(pulse->cxt, dev->idx, vol, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (pulse->success)
@@ -365,7 +367,7 @@ static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 	/* new effective volume */
 	printf("%d\n", mute ? 0 : dev->volume_percent);
 
-	op = pulse->head->fn_mute(pulse->cxt, dev->idx, mute,
+	op = pulse->head->op.mute(pulse->cxt, dev->idx, mute,
 			success_cb, pulse);
 
 	pulse_async_wait(pulse, op);
@@ -384,10 +386,10 @@ static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 {
 	pa_operation *op;
 
-	if (dev->fn_kill == NULL)
+	if (dev->op.kill == NULL)
 		errx(EXIT_FAILURE, "only clients can be killed");
 
-	op = dev->fn_kill(pulse->cxt, dev->idx, success_cb, pulse);
+	op = dev->op.kill(pulse->cxt, dev->idx, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (!pulse->success) {
@@ -406,10 +408,10 @@ static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 
 	if (dev->next == NULL)
 		errx(EXIT_FAILURE, "no destination to move to");
-	if (dev->next->fn_move == NULL)
+	if (dev->next->op.move == NULL)
 		errx(EXIT_FAILURE, "only clients can be moved");
 
-	op = dev->next->fn_move(pulse->cxt, dev->next->idx, dev->idx, success_cb,
+	op = dev->next->op.move(pulse->cxt, dev->next->idx, dev->idx, success_cb,
 			pulse);
 
 	pulse_async_wait(pulse, op);
@@ -527,10 +529,10 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 {
 	pa_operation *op;
 
-	if (dev->fn_setdefault == NULL)
+	if (dev->op.setdefault == NULL)
 		errx(EXIT_FAILURE, "valid operation only for devices");
 
-	op = dev->fn_setdefault(pulse->cxt, dev->name, success_cb, pulse);
+	op = dev->op.setdefault(pulse->cxt, dev->name, success_cb, pulse);
 	pulse_async_wait(pulse, op);
 
 	if (!pulse->success) {

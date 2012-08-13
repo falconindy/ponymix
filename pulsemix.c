@@ -561,15 +561,31 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !pulse->success;
 }
 
-static void pulse_init(struct pulseaudio_t *pulse)
+static int pulse_connect(struct pulseaudio_t *pulse)
+{
+	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
+	while (pulse->state == STATE_CONNECTING)
+		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
+
+	if (pulse->state == STATE_ERROR) {
+		int r = pa_context_errno(pulse->cxt);
+		fprintf(stderr, "failed to connect to pulse daemon: %s\n",
+				pa_strerror(r));
+		return 1;
+	}
+
+	return 0;
+}
+
+static int pulse_init(struct pulseaudio_t *pulse)
 {
 	pulse->mainloop = pa_mainloop_new();
 	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "lolpulse");
 	pulse->state = STATE_CONNECTING;
 	pulse->head = NULL;
 
-	/* set state callback for connection */
 	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
+	return pulse_connect(pulse);
 }
 
 static void pulse_deinit(struct pulseaudio_t *pulse)
@@ -586,22 +602,6 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 		free(pulse->head);
 		pulse->head = node;
 	}
-}
-
-static int pulse_connect(struct pulseaudio_t *pulse)
-{
-	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
-	while (pulse->state == STATE_CONNECTING)
-		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
-
-	if (pulse->state == STATE_ERROR) {
-		int r = pa_context_errno(pulse->cxt);
-		fprintf(stderr, "failed to connect to pulse daemon: %s\n",
-				pa_strerror(r));
-		return 1;
-	}
-
-	return 0;
 }
 
 static void __attribute__((__noreturn__)) usage(FILE *out)
@@ -760,8 +760,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* initialize connection */
-	pulse_init(&pulse);
-	if (pulse_connect(&pulse) != 0)
+	if (pulse_init(&pulse) != 0)
 		return 1;
 
 	if (verb == ACTION_DEFAULTS) {

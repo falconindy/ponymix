@@ -635,11 +635,11 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 
 	fputs("\nDevice Commands:\n", out);
 	fputs("  defaults            list default devices\n", out);
-	fputs("  set-default NAME    set default device\n", out);
+	fputs("  set-default DEVICE  set default device\n", out);
 
 	fputs("\nApplication Commands:\n", out);
-	fputs("  move NAME           move application stream to device\n", out);
-	fputs("  kill                kill an application's stream\n", out);
+	fputs("  move ID DEVICE      move application stream to device\n", out);
+	fputs("  kill ID             kill an application's stream\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -778,10 +778,11 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 
 	optind++;
-	if (verb == ACTION_SETVOL ||
-			verb == ACTION_SETBAL ||
-			verb == ACTION_INCREASE ||
-			verb == ACTION_DECREASE)
+	switch (verb) {
+	case ACTION_SETVOL:
+	case ACTION_SETBAL:
+	case ACTION_INCREASE:
+	case ACTION_DECREASE:
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else {
@@ -789,57 +790,66 @@ int main(int argc, char *argv[])
 			if (xstrtol(argv[optind], &value) < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
-	else if (verb == ACTION_SETDEFAULT) {
+		break;
+	case ACTION_SETDEFAULT:
+	case ACTION_KILL:
 		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
+			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
 		else
 			id = argv[optind];
-	} else if (verb == ACTION_MOVE) {
-		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
-		else
+		break;
+	case ACTION_MOVE:
+		if (optind > argc - 2)
+			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
+		else {
+			id = argv[optind++];
 			arg = argv[optind];
+		}
+		break;
+	default:
+		break;
 	}
 
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)
 		return 1;
 
-	if (verb == ACTION_DEFAULTS) {
+	switch (verb) {
+	case ACTION_DEFAULTS:
 		get_default_sink(&pulse);
 		get_default_source(&pulse);
 		print_all(&pulse);
-	} else if (verb == ACTION_LIST) {
+		goto done;
+	case ACTION_LIST:
 		populate_sinks(&pulse, mode);
 		populate_sources(&pulse, mode);
 		print_all(&pulse);
-	} else {
-		/* determine sink */
-		if (id && fn_get_by_name) {
-			if (fn_get_by_name(&pulse, id, mode) != 0)
-				goto done;
-		} else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default) {
-			if (fn_get_default(&pulse) != 0)
-				goto done;
-		}
-
-		if (pulse.head == NULL) {
-			if (mode && !id) {
-				warnx("%s id not set, no default operations", pp_name);
-				rc = 1;
-				goto done;
-			} else {
-				warnx("%s not found: %s", pp_name, id ? id : "default");
-				rc = 1;
-				goto done;
-			}
-		}
-
-		if (arg && fn_get_by_name)
-			fn_get_by_name(&pulse, arg, MODE_DEVICE);
-
-		rc = do_verb(&pulse, verb, value);
+		goto done;
+	default:
+		break;
 	}
+
+	if (id && fn_get_by_name) {
+		if (fn_get_by_name(&pulse, id, mode) != 0)
+			goto done;
+	} else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default) {
+		if (fn_get_default(&pulse) != 0)
+			goto done;
+	}
+
+	if (pulse.head == NULL) {
+		if (mode && !id)
+			warnx("%s id not set, no default operations", pp_name);
+		else
+			warnx("%s not found: %s", pp_name, id ? id : "default");
+		rc = 1;
+		goto done;
+	}
+
+	if (arg && fn_get_by_name)
+		fn_get_by_name(&pulse, arg, MODE_DEVICE);
+
+	rc = do_verb(&pulse, verb, value);
 
 done:
 	/* shut down */

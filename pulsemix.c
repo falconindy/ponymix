@@ -324,8 +324,10 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 	pa_cvolume *vol;
 	pa_operation *op;
 
-	if (pa_channel_map_valid(&dev->channels) == 0)
-		errx(EXIT_FAILURE, "can't set balance on that device.");
+	if (pa_channel_map_valid(&dev->channels) == 0) {
+		warnx("can't set balance on that device.");
+		return 1;
+	}
 
 	vol = pa_cvolume_set_balance(&dev->volume, &dev->channels, v / 100.0);
 	op = dev->op.setvol(pulse->cxt, dev->idx, vol, success_cb, pulse);
@@ -335,7 +337,7 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 		printf("%ld\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
-		errx(EXIT_FAILURE, "failed to set balance: %s", pa_strerror(err));
+		warnx("failed to set balance: %s", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
@@ -369,8 +371,10 @@ static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 {
 	pa_operation *op;
 
-	if (dev->op.kill == NULL)
-		errx(EXIT_FAILURE, "only clients can be killed");
+	if (dev->op.kill == NULL) {
+		warnx("only clients can be killed");
+		return 1;
+	}
 
 	op = dev->op.kill(pulse->cxt, dev->idx, success_cb, pulse);
 	pulse_async_wait(pulse, op);
@@ -389,10 +393,14 @@ static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 {
 	pa_operation* op;
 
-	if (dev->next == NULL)
-		errx(EXIT_FAILURE, "no destination to move to");
-	if (dev->next->op.move == NULL)
-		errx(EXIT_FAILURE, "only clients can be moved");
+	if (dev->next == NULL) {
+		warnx("no destination to move to");
+		return 1;
+	}
+	if (dev->next->op.move == NULL) {
+		warnx("only clients can be moved");
+		return 1;
+	}
 
 	op = dev->next->op.move(pulse->cxt, dev->next->idx, dev->idx, success_cb,
 			pulse);
@@ -451,8 +459,10 @@ static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum 
 	case MODE_APP:
 	{
 		long id;
-		if (xstrtol(name, &id) < 0)
-			errx(EXIT_FAILURE, "application sink not id: %s", name);
+		if (xstrtol(name, &id) < 0) {
+			warnx("application sink not valid id: %s", name);
+			return;
+		}
 		op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, pulse);
 		break;
 	}
@@ -501,8 +511,10 @@ static void get_source_by_name(struct pulseaudio_t *pulse, const char *name, enu
 	case MODE_APP:
 	{
 		long id;
-		if (xstrtol(name, &id) < 0)
-			errx(EXIT_FAILURE, "application source not id: %s", name);
+		if (xstrtol(name, &id) < 0) {
+			warnx("application source not valid id: %s", name);
+			return;
+		}
 		op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, pulse);
 		break;
 	}
@@ -530,8 +542,10 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 {
 	pa_operation *op;
 
-	if (dev->op.setdefault == NULL)
-		errx(EXIT_FAILURE, "valid operation only for devices");
+	if (dev->op.setdefault == NULL) {
+		warnx("valid operation only for devices");
+		return 1;
+	}
 
 	op = dev->op.setdefault(pulse->cxt, dev->name, success_cb, pulse);
 	pulse_async_wait(pulse, op);
@@ -766,10 +780,13 @@ int main(int argc, char *argv[])
 			fn_get_default(&pulse);
 
 		if (pulse.head == NULL) {
-			if (mode && !id)
-				errx(EXIT_FAILURE, "%s id not set, no default operations", pp_name);
-			else
-				errx(EXIT_FAILURE, "%s not found: %s", pp_name, id ? id : "default");
+			if (mode && !id) {
+				warnx("%s id not set, no default operations", pp_name);
+				goto done;
+			} else {
+				warnx("%s not found: %s", pp_name, id ? id : "default");
+				goto done;
+			}
 		}
 
 		if (arg && fn_get_by_name)
@@ -823,6 +840,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
+done:
 	/* shut down */
 	pulse_deinit(&pulse);
 

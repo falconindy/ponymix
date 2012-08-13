@@ -743,8 +743,7 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else {
 			/* validate to number */
-			int r = xstrtol(argv[optind], &value);
-			if (r < 0)
+			if (xstrtol(argv[optind], &value) < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
 	else if (verb == ACTION_SETDEFAULT) {

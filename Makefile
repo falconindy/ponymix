@@ -7,5 +7,8 @@ install: pulsemix
 	mkdir -p $(DESTDIR)/usr/bin
 	install -m755 pulsemix $(DESTDIR)/usr/bin/pulsemix
 
+check: pulsemix
+	./runtests ./pulsemix
+
 clean:
 	$(RM) pulsemix pulsemix.o

@@ -1,0 +1,51 @@
+#!/bin/bash
+
+pulsemix=$1
+
+if [[ -z $pulsemix ]]; then
+  printf 'usage: %s path-to-pulsemix\n' "${0##*/}"
+  exit 1
+fi
+
+if [[ ! -x $pulsemix ]]; then
+  printf '==> ERROR: pulsemix binary not found at %s\n' "$pulsemix"
+  exit 1
+fi
+
+testno=0 fail=0 pass=0
+
+do_test() {
+  local expected=$1 verb=$2 arg=$3 result=
+
+  (( ++testno ))
+
+  result=$("$pulsemix" "$verb" ${arg+"$arg"} 2>/dev/null)
+  if [[ $result != $expected ]]; then
+    printf '==> test %d FAIL: expected %s, got %s\n' "$testno" "$expected" "$result"
+    (( ++fail ))
+  else
+    (( ++pass ))
+  fi
+}
+
+# volume
+do_test 50 'set-volume' 50
+do_test 10 'decrease' 40
+do_test 0 'decrease' 9001
+do_test 0 'get-volume'
+do_test 50 'increase' 50
+do_test '' 'set-volume'
+do_test '' 'increase' foo
+do_test '' 'decrease' bar
+
+# balance
+do_test 30 'set-balance' 30
+do_test 100 'set-balance' 9001
+do_test 0 'set-balance' 0
+
+if (( ! fail )); then
+  printf '==> All %d tests successful\n' "$testno"
+else
+  printf '==> %d/%d tests failed\n' "$fail" "$testno"
+  exit 1
+fi

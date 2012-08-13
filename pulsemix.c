@@ -102,7 +102,6 @@ struct io_t {
 struct pulseaudio_t {
 	pa_context *cxt;
 	pa_mainloop *mainloop;
-	pa_mainloop_api *mainloop_api;
 	enum connectstate state;
 	int success;
 
@@ -548,12 +547,10 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !pulse->success;
 }
 
-static void pulse_init(struct pulseaudio_t *pulse, const char *clientname)
+static void pulse_init(struct pulseaudio_t *pulse)
 {
-	/* allocate */
 	pulse->mainloop = pa_mainloop_new();
-	pulse->mainloop_api = pa_mainloop_get_api(pulse->mainloop);
-	pulse->cxt = pa_context_new(pulse->mainloop_api, clientname);
+	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "lolpulse");
 	pulse->state = STATE_CONNECTING;
 	pulse->head = NULL;
 
@@ -749,7 +746,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* initialize connection */
-	pulse_init(&pulse, "lolpulse");
+	pulse_init(&pulse);
 	if (pulse_connect(&pulse) != 0)
 		return 1;
 

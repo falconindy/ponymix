@@ -680,7 +680,7 @@ static enum action string_to_verb(const char *string)
 	return ACTION_INVALID;
 }
 
-int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)
+static int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)
 {
 	switch (verb) {
 	case ACTION_GETVOL:

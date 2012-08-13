@@ -680,6 +680,45 @@ static enum action string_to_verb(const char *string)
 	return ACTION_INVALID;
 }
 
+int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)
+{
+	switch (verb) {
+	case ACTION_GETVOL:
+		printf("%d\n", pulse->head->volume_percent);
+		return 0;
+	case ACTION_SETVOL:
+		return set_volume(pulse, pulse->head, CLAMP(value, 0, 150));
+	case ACTION_GETBAL:
+		printf("%d\n", pulse->head->balance);
+		return 0;
+	case ACTION_SETBAL:
+		return set_balance(pulse, pulse->head,
+				CLAMP(value, -100, 100));
+	case ACTION_INCREASE:
+		return set_volume(pulse, pulse->head,
+				CLAMP(pulse->head->volume_percent + value, 0, 100));
+	case ACTION_DECREASE:
+		return set_volume(pulse, pulse->head,
+				CLAMP(pulse->head->volume_percent - value, 0, 100));
+	case ACTION_MUTE:
+		return set_mute(pulse, pulse->head, 1);
+	case ACTION_UNMUTE:
+		return set_mute(pulse, pulse->head, 0);
+	case ACTION_TOGGLE:
+		return set_mute(pulse, pulse->head, !pulse->head->mute);
+	case ACTION_ISMUTED:
+		return !pulse->head->mute;
+	case ACTION_MOVE:
+		return move_client(pulse, pulse->head);
+	case ACTION_KILL:
+		return kill_client(pulse, pulse->head);
+	case ACTION_SETDEFAULT:
+		return set_default(pulse, pulse->head);
+	default:
+		errx(EXIT_FAILURE, "internal error: unhandled verb id %d\n", verb);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
@@ -799,52 +838,7 @@ int main(int argc, char *argv[])
 		if (arg && fn_get_by_name)
 			fn_get_by_name(&pulse, arg, MODE_DEVICE);
 
-		switch (verb) {
-		case ACTION_GETVOL:
-			printf("%d\n", pulse.head->volume_percent);
-			break;
-		case ACTION_SETVOL:
-			rc = set_volume(&pulse, pulse.head, CLAMP(value, 0, 150));
-			break;
-		case ACTION_GETBAL:
-			printf("%d\n", pulse.head->balance);
-			break;
-		case ACTION_SETBAL:
-			rc = set_balance(&pulse, pulse.head,
-					CLAMP(value, -100, 100));
-			break;
-		case ACTION_INCREASE:
-			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent + value, 0, 100));
-			break;
-		case ACTION_DECREASE:
-			rc = set_volume(&pulse, pulse.head,
-					CLAMP(pulse.head->volume_percent - value, 0, 100));
-			break;
-		case ACTION_MUTE:
-			rc = set_mute(&pulse, pulse.head, 1);
-			break;
-		case ACTION_UNMUTE:
-			rc = set_mute(&pulse, pulse.head, 0);
-			break;
-		case ACTION_TOGGLE:
-			rc = set_mute(&pulse, pulse.head, !pulse.head->mute);
-			break;
-		case ACTION_ISMUTED:
-			rc = !pulse.head->mute;
-			break;
-		case ACTION_MOVE:
-			rc = move_client(&pulse, pulse.head);
-			break;
-		case ACTION_KILL:
-			rc = kill_client(&pulse, pulse.head);
-			break;
-		case ACTION_SETDEFAULT:
-			rc = set_default(&pulse, pulse.head);
-			break;
-		default:
-			break;
-		}
+		rc = do_verb(&pulse, verb, value);
 	}
 
 done:

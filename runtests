@@ -19,7 +19,7 @@ do_test() {
 
   (( ++testno ))
 
-  result=$("$pulsemix" "$verb" ${arg+"$arg"} 2>/dev/null)
+  result=$("$pulsemix" "$verb" -- ${arg+"$arg"} 2>/dev/null)
   if [[ $result != $expected ]]; then
     printf '==> test %d FAIL: expected %s, got %s\n' "$testno" "$expected" "$result"
     (( ++fail ))
@@ -40,7 +40,11 @@ do_test '' 'decrease' bar
 
 # balance
 do_test 30 'set-balance' 30
+do_test 30 'get-balance'
 do_test 100 'set-balance' 9001
+do_test -5 'adj-balance' -105
+do_test 45 'adj-balance' 50
+do_test 100 'adj-balance' 9001
 do_test 0 'set-balance' 0
 
 if (( ! fail )); then

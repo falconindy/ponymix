@@ -65,6 +65,7 @@ enum action {
 	ACTION_SETVOL,
 	ACTION_GETBAL,
 	ACTION_SETBAL,
+	ACTION_ADJBAL,
 	ACTION_INCREASE,
 	ACTION_DECREASE,
 	ACTION_MUTE,
@@ -626,6 +627,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  set-volume VALUE       set volume for device\n", out);
 	fputs("  get-balance            get balance for device\n", out);
 	fputs("  set-balance VALUE      set balance for device\n", out);
+	fputs("  adj-balance VALUE      increase or decrease balance for device\n", out);
 	fputs("  increase VALUE         increase volume\n", out);
 	fputs("  decrease VALUE         decrease volume\n", out);
 	fputs("  mute                   mute device\n", out);
@@ -658,6 +660,8 @@ static enum action string_to_verb(const char *string)
 		return ACTION_GETBAL;
 	else if (strcmp(string, "set-balance") == 0)
 		return ACTION_SETBAL;
+	else if (strcmp(string, "adj-balance") == 0)
+		return ACTION_ADJBAL;
 	else if (strcmp(string, "increase") == 0)
 		return ACTION_INCREASE;
 	else if (strcmp(string, "decrease") == 0)
@@ -692,8 +696,10 @@ static int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)
 		printf("%d\n", pulse->head->balance);
 		return 0;
 	case ACTION_SETBAL:
+		return set_balance(pulse, pulse->head, CLAMP(value, -100, 100));
+	case ACTION_ADJBAL:
 		return set_balance(pulse, pulse->head,
-				CLAMP(value, -100, 100));
+				CLAMP(pulse->head->balance + value, -100, 100));
 	case ACTION_INCREASE:
 		return set_volume(pulse, pulse->head,
 				CLAMP(pulse->head->volume_percent + value, 0, 100));
@@ -781,6 +787,7 @@ int main(int argc, char *argv[])
 	switch (verb) {
 	case ACTION_SETVOL:
 	case ACTION_SETBAL:
+	case ACTION_ADJBAL:
 	case ACTION_INCREASE:
 	case ACTION_DECREASE:
 		if (optind == argc)

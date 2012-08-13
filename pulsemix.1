@@ -39,6 +39,10 @@ Get the balance of the target.
 .IP "\fBset-balance\fR \fIVALUE\fR"
 Set the balance of the target. VALUE is an integer from -100 (all left) to 100
 (all right).
+.IP "\fBadj-balance\fR \fIVALUE\fR"
+Adjust balance by the integer increment VALUE. The resulting balance has the same
+bounds as those set by \fBset-balance\fR. The end-of-options indicator (\fI--\fR) is
+required when passing a negative increment.
 .IP "\fBincrease\fR \fIVALUE\fR"
 Increase the volume percentage of target device or application by integer
 VALUE. Increasing the volume in this way is capped at 100.

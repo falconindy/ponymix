@@ -838,15 +838,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (pulse.head == NULL) {
-		if (mode && !id) {
+		if (mode && !id)
 			warnx("%s id not set, no default operations", pp_name);
-			rc = 1;
-			goto done;
-		} else {
+		else
 			warnx("%s not found: %s", pp_name, id ? id : "default");
-			rc = 1;
-			goto done;
-		}
+		rc = 1;
+		goto done;
 	}
 
 	if (arg && fn_get_by_name)

@@ -451,7 +451,7 @@ static void populate_sinks(struct pulseaudio_t *pulse, enum mode mode)
 	pa_operation_unref(op);
 }
 
-static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
+static int get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
 {
 	pa_operation *op;
 
@@ -461,7 +461,7 @@ static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum 
 		long id;
 		if (xstrtol(name, &id) < 0) {
 			warnx("application sink not valid id: %s", name);
-			return;
+			return 1;
 		}
 		op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, pulse);
 		break;
@@ -473,9 +473,11 @@ static void get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum 
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
+
+	return 0;
 }
 
-static void get_default_sink(struct pulseaudio_t *pulse)
+static int get_default_sink(struct pulseaudio_t *pulse)
 {
 	const char *sink_name;
 	pa_operation *op = pa_context_get_server_info(pulse->cxt, server_info_cb,
@@ -483,7 +485,7 @@ static void get_default_sink(struct pulseaudio_t *pulse)
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 
-	get_sink_by_name(pulse, sink_name, MODE_DEVICE);
+	return get_sink_by_name(pulse, sink_name, MODE_DEVICE);
 }
 
 static void populate_sources(struct pulseaudio_t *pulse, enum mode mode)
@@ -503,7 +505,7 @@ static void populate_sources(struct pulseaudio_t *pulse, enum mode mode)
 	pa_operation_unref(op);
 }
 
-static void get_source_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
+static int get_source_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
 {
 	pa_operation *op;
 
@@ -513,7 +515,7 @@ static void get_source_by_name(struct pulseaudio_t *pulse, const char *name, enu
 		long id;
 		if (xstrtol(name, &id) < 0) {
 			warnx("application source not valid id: %s", name);
-			return;
+			return 1;
 		}
 		op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, pulse);
 		break;
@@ -525,9 +527,11 @@ static void get_source_by_name(struct pulseaudio_t *pulse, const char *name, enu
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
+
+	return 0;
 }
 
-static void get_default_source(struct pulseaudio_t *pulse)
+static int get_default_source(struct pulseaudio_t *pulse)
 {
 	const char *source_name;
 	pa_operation *op = pa_context_get_server_info(pulse->cxt, source_info_cb,
@@ -535,7 +539,7 @@ static void get_default_source(struct pulseaudio_t *pulse)
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 
-	get_source_by_name(pulse, source_name, MODE_DEVICE);
+	return get_source_by_name(pulse, source_name, MODE_DEVICE);
 }
 
 static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
@@ -686,8 +690,8 @@ int main(int argc, char *argv[])
 	int rc = 0;
 
 	const char *pp_name = "sink";
-	void (*fn_get_default)(struct pulseaudio_t *) = get_default_sink;
-	void (*fn_get_by_name)(struct pulseaudio_t *, const char *, enum mode) = get_sink_by_name;
+	int (*fn_get_default)(struct pulseaudio_t *) = get_default_sink;
+	int (*fn_get_by_name)(struct pulseaudio_t *, const char *, enum mode) = get_sink_by_name;
 
 	static const struct option opts[] = {
 		{ "help", no_argument, 0, 'h' },
@@ -772,17 +776,22 @@ int main(int argc, char *argv[])
 		print_all(&pulse);
 	} else {
 		/* determine sink */
-		if (id && fn_get_by_name)
-			fn_get_by_name(&pulse, id, mode);
-		else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default)
-			fn_get_default(&pulse);
+		if (id && fn_get_by_name) {
+			if (fn_get_by_name(&pulse, id, mode) != 0)
+				goto done;
+		} else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default) {
+			if (fn_get_default(&pulse) != 0)
+				goto done;
+		}
 
 		if (pulse.head == NULL) {
 			if (mode && !id) {
 				warnx("%s id not set, no default operations", pp_name);
+				rc = 1;
 				goto done;
 			} else {
 				warnx("%s not found: %s", pp_name, id ? id : "default");
+				rc = 1;
 				goto done;
 			}
 		}

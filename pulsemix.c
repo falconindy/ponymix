@@ -803,48 +803,54 @@ int main(int argc, char *argv[])
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else
 			arg = argv[optind];
+		break;
 	default:
+		break;
 	}
 
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)
 		return 1;
 
-	if (verb == ACTION_DEFAULTS) {
+	switch (verb) {
+	case ACTION_DEFAULTS:
 		get_default_sink(&pulse);
 		get_default_source(&pulse);
 		print_all(&pulse);
-	} else if (verb == ACTION_LIST) {
+		goto done;
+	case ACTION_LIST:
 		populate_sinks(&pulse, mode);
 		populate_sources(&pulse, mode);
 		print_all(&pulse);
-	} else {
-		/* determine sink */
-		if (id && fn_get_by_name) {
-			if (fn_get_by_name(&pulse, id, mode) != 0)
-				goto done;
-		} else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default) {
-			if (fn_get_default(&pulse) != 0)
-				goto done;
-		}
-
-		if (pulse.head == NULL) {
-			if (mode && !id) {
-				warnx("%s id not set, no default operations", pp_name);
-				rc = 1;
-				goto done;
-			} else {
-				warnx("%s not found: %s", pp_name, id ? id : "default");
-				rc = 1;
-				goto done;
-			}
-		}
-
-		if (arg && fn_get_by_name)
-			fn_get_by_name(&pulse, arg, MODE_DEVICE);
-
-		rc = do_verb(&pulse, verb, value);
+		goto done;
+	default:
+		break;
 	}
+
+	if (id && fn_get_by_name) {
+		if (fn_get_by_name(&pulse, id, mode) != 0)
+			goto done;
+	} else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default) {
+		if (fn_get_default(&pulse) != 0)
+			goto done;
+	}
+
+	if (pulse.head == NULL) {
+		if (mode && !id) {
+			warnx("%s id not set, no default operations", pp_name);
+			rc = 1;
+			goto done;
+		} else {
+			warnx("%s not found: %s", pp_name, id ? id : "default");
+			rc = 1;
+			goto done;
+		}
+	}
+
+	if (arg && fn_get_by_name)
+		fn_get_by_name(&pulse, arg, MODE_DEVICE);
+
+	rc = do_verb(&pulse, verb, value);
 
 done:
 	/* shut down */

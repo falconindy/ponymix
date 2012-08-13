@@ -638,8 +638,8 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("  set-default NAME    set default device\n", out);
 
 	fputs("\nApplication Commands:\n", out);
-	fputs("  move NAME           move application stream to device\n", out);
-	fputs("  kill                kill an application's stream\n", out);
+	fputs("  move ID             move application stream to device\n", out);
+	fputs("  kill ID             kill an application's stream\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -778,10 +778,11 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 
 	optind++;
-	if (verb == ACTION_SETVOL ||
-			verb == ACTION_SETBAL ||
-			verb == ACTION_INCREASE ||
-			verb == ACTION_DECREASE)
+	switch (verb) {
+	case ACTION_SETVOL:
+	case ACTION_SETBAL:
+	case ACTION_INCREASE:
+	case ACTION_DECREASE:
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else {
@@ -789,16 +790,20 @@ int main(int argc, char *argv[])
 			if (xstrtol(argv[optind], &value) < 0)
 				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		}
-	else if (verb == ACTION_SETDEFAULT) {
+		break;
+	case ACTION_SETDEFAULT:
+	case ACTION_KILL:
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else
 			id = argv[optind];
-	} else if (verb == ACTION_MOVE) {
+		break;
+	case ACTION_MOVE:
 		if (optind == argc)
 			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
 		else
 			arg = argv[optind];
+	default:
 	}
 
 	/* initialize connection */

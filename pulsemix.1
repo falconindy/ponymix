@@ -1,0 +1,73 @@
+.TH PULSEMIX "1" "August 12" "pulsemix" "User Commands"
+.SH NAME
+pulsemix \- cli volume control for PulseAudio
+.SH SYNOPSIS
+\fBpulsemix\fP [options] \fIoperation\fP [args]
+.SH DESCRIPTION
+\fBpulsemix\fP is a command line volume control for PulseAudio, letting you
+perform many operations on both device and application sinks and source.
+.SH OPTIONS
+.PP
+.IP "\fB\-d\fR, \fB\-\-device\fR"
+Control input and output devices.
+.IP "\fB\-a\fR, \fB\-\-app\fR"
+Control the playback and recording streams.
+.IP "\fB\-o\fR, \fB\-\-sink\fR[\fB=\fR\fISINK\fR]"
+Specify the sink to control. If the argument is omitted, the default
+sink is used.
+\fISINK\fR must be the numeric index of the sink.
+.IP "\fB\-i\fR, \fB\-\-source\fR[\fB=\fR\fISOURCE\fR]"
+Specify the source to control. If the argument is omitted,
+the default source is assumed.
+\fISOURCE\fR must be the numeric index of the source.
+.PP
+When neither \fB\-o\fR nor \fB\-i\fR are specified, the default
+source is used. When neither \fB\-d\fR nor \fB\-a\fR are specified,
+devices are operated on.
+.SH OPERATIONS
+.SS Common Operations
+These options work on both devices and applications.
+.PP
+.IP "\fBlist\fR"
+List all available sinks and sources.
+.IP "\fBget-volume\fR"
+Get the volume of the target.
+.IP "\fBset-volume\fR \fIVALUE\fR"
+Set the volume of the target. VALUE is an integer between 0 and 150.
+.IP "\fBget-balance\fR"
+Get the balance of the target.
+.IP "\fBset-balance\fR \fIVALUE\fR"
+Set the balance of the target. VALUE is an integer from -100 (all left) to 100
+(all right).
+.IP "\fBincrease\fR \fIVALUE\fR"
+Increase the volume percentage of target device or application by integer
+VALUE. Increasing the volume in this way is capped at 100.
+.IP "\fBdecrease\fR \fIVALUE\fR"
+Decrease the volume percentage of target by the integer VALUE. Decreasing the
+volume in this way is capped at 0.
+.IP "\fBmute\fR, \fBunmute\fR, \fBtoggle\fR"
+Mute, unmute, or toggle the mute status on the target.
+.IP "\fBis-muted\fR"
+Check if the target is muted. pulsemix will exit with the status 0 if muted,
+and non-zero otherwise.
+.SS Device Operations
+.PP
+.IP "\fBdefaults\fR"
+Display the default sink and source.
+.IP "\fBset-default\fR \fIDEVICE_ID\fR"
+Set the default sink or source by numeric index, depending on whether
+\fI\-i\fR or \fI\-o\fR was set.
+.SS Application Operations
+
+.IP "\fBmove\fR \fIAPP_ID\fR \fIDEVICE_ID\fR"
+Move the application's stream by numeric index to another device by numeric index.
+.IP "\fBkill\fR \fIAPP_ID\fR"
+Kill an application's stream by numeric index.
+.SH AUTHORS
+.nf
+Dave Reisner <dreisner@archlinux.org>
+Simon Gomizelj <simongmzlj@gmail.com>
+.fi
+.SH SEE ALSO
+.BR pulseaudio (1)
+

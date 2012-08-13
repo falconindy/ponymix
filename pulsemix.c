@@ -635,10 +635,10 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 
 	fputs("\nDevice Commands:\n", out);
 	fputs("  defaults            list default devices\n", out);
-	fputs("  set-default NAME    set default device\n", out);
+	fputs("  set-default DEVICE  set default device\n", out);
 
 	fputs("\nApplication Commands:\n", out);
-	fputs("  move ID             move application stream to device\n", out);
+	fputs("  move ID DEVICE      move application stream to device\n", out);
 	fputs("  kill ID             kill an application's stream\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -794,15 +794,17 @@ int main(int argc, char *argv[])
 	case ACTION_SETDEFAULT:
 	case ACTION_KILL:
 		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
+			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
 		else
 			id = argv[optind];
 		break;
 	case ACTION_MOVE:
-		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
-		else
+		if (optind > argc - 2)
+			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
+		else {
+			id = argv[optind++];
 			arg = argv[optind];
+		}
 		break;
 	default:
 		break;

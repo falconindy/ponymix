@@ -612,34 +612,34 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n", out);
-	fputs(" -h, --help           display this help and exit\n", out);
+	fputs(" -h, --help              display this help and exit\n", out);
 
-	fputs("\n -d, --device         set device mode (default)\n", out);
-	fputs(" -a, --app            set application mode\n", out);
+	fputs("\n -d, --device            set device mode (default)\n", out);
+	fputs(" -a, --app               set application mode\n", out);
 
-	fputs("\n -o, --sink=<name>    control a sink other than the default\n", out);
-	fputs(" -i, --source=<name>  control a source\n", out);
+	fputs("\n -o, --sink=<name>       control a sink other than the default\n", out);
+	fputs(" -i, --source=<name>     control a source\n", out);
 
 	fputs("\nCommon Commands:\n", out);
-	fputs("  list                list available devices\n", out);
-	fputs("  get-volume          get volume for device\n", out);
-	fputs("  set-volume VALUE    set volume for device\n", out);
-	fputs("  get-balance         get balance for device\n", out);
-	fputs("  set-balance VALUE   set balance for device\n", out);
-	fputs("  increase VALUE      increase volume\n", out);
-	fputs("  decrease VALUE      decrease volume\n", out);
-	fputs("  mute                mute device\n", out);
-	fputs("  unmute              unmute device\n", out);
-	fputs("  toggle              toggle mute\n", out);
-	fputs("  is-muted            check if muted\n", out);
+	fputs("  list                   list available devices\n", out);
+	fputs("  get-volume             get volume for device\n", out);
+	fputs("  set-volume VALUE       set volume for device\n", out);
+	fputs("  get-balance            get balance for device\n", out);
+	fputs("  set-balance VALUE      set balance for device\n", out);
+	fputs("  increase VALUE         increase volume\n", out);
+	fputs("  decrease VALUE         decrease volume\n", out);
+	fputs("  mute                   mute device\n", out);
+	fputs("  unmute                 unmute device\n", out);
+	fputs("  toggle                 toggle mute\n", out);
+	fputs("  is-muted               check if muted\n", out);
 
 	fputs("\nDevice Commands:\n", out);
-	fputs("  defaults            list default devices\n", out);
-	fputs("  set-default DEVICE  set default device\n", out);
+	fputs("  defaults               list default devices\n", out);
+	fputs("  set-default DEVICE_ID  set default device by ID\n", out);
 
 	fputs("\nApplication Commands:\n", out);
-	fputs("  move ID DEVICE      move application stream to device\n", out);
-	fputs("  kill ID             kill an application's stream\n", out);
+	fputs("  move APP_ID DEVICE_ID  move application stream by ID to device ID\n", out);
+	fputs("  kill APP_ID            kill an application stream by ID\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }

@@ -643,7 +643,7 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
 
-	while (node) {
+	while (node && pulse->head) {
 		node = pulse->head->next;
 		free(pulse->head->name);
 		free(pulse->head->desc);

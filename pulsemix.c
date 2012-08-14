@@ -731,16 +731,16 @@ int main(int argc, char *argv[])
 	int (*fn_get_by_name)(struct pulseaudio_t *, const char *, enum mode) = get_sink_by_name;
 
 	static const struct option opts[] = {
-		{ "help", no_argument, 0, 'h' },
-		{ "device", no_argument, 0, 'd' },
 		{ "app", no_argument, 0, 'a' },
+		{ "device", no_argument, 0, 'd' },
+		{ "help", no_argument, 0, 'h' },
 		{ "sink", optional_argument, 0, 'o' },
 		{ "source", optional_argument, 0, 'i' },
 		{ 0, 0, 0, 0 },
 	};
 
 	for (;;) {
-		int opt = getopt_long(argc, argv, "hao::i::", opts, NULL);
+		int opt = getopt_long(argc, argv, "adhi::o::", opts, NULL);
 		if (opt == -1)
 			break;
 

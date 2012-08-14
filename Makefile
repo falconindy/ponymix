@@ -2,14 +2,14 @@ CC = gcc -std=gnu99
 CFLAGS := -Wall -Wextra -pedantic -O2 -g -D_REENTRANT $(CFLAGS)
 LDFLAGS := -lpulse -lm $(LDFLAGS)
 
-pulsemix: pulsemix.o
+ponymix: ponymix.o
 
-install: pulsemix
-	install -Dm755 pulsemix $(DESTDIR)/usr/bin/pulsemix
-	install -Dm644 pulsemix.1 $(DESTDIR)/usr/share/man/man1/pulsemix.1
+install: ponymix
+	install -Dm755 ponymix $(DESTDIR)/usr/bin/ponymix
+	install -Dm644 ponymix.1 $(DESTDIR)/usr/share/man/man1/ponymix.1
 
-check: pulsemix
-	./runtests ./pulsemix
+check: ponymix
+	./runtests ./ponymix
 
 clean:
-	$(RM) pulsemix pulsemix.o
+	$(RM) ponymix ponymix.o

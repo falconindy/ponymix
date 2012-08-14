@@ -1,14 +1,14 @@
 #!/bin/bash
 
-pulsemix=$1
+ponymix=$1
 
-if [[ -z $pulsemix ]]; then
-  printf 'usage: %s path-to-pulsemix\n' "${0##*/}"
+if [[ -z $ponymix ]]; then
+  printf 'usage: %s path-to-ponymix\n' "${0##*/}"
   exit 1
 fi
 
-if [[ ! -x $pulsemix ]]; then
-  printf '==> ERROR: pulsemix binary not found at %s\n' "$pulsemix"
+if [[ ! -x $ponymix ]]; then
+  printf '==> ERROR: ponymix binary not found at %s\n' "$ponymix"
   exit 1
 fi
 
@@ -19,7 +19,7 @@ do_test() {
 
   (( ++testno ))
 
-  result=$("$pulsemix" "$verb" -- ${arg+"$arg"} 2>/dev/null)
+  result=$("$ponymix" "$verb" -- ${arg+"$arg"} 2>/dev/null)
   if [[ $result != $expected ]]; then
     printf '==> test %d FAIL: expected %s, got %s\n' "$testno" "$expected" "$result"
     (( ++fail ))

@@ -35,13 +35,13 @@ do_test '' 'derp' 100
 # volume
 do_test 50 'set-volume' 50
 do_test 10 'decrease' 40
-do_test 0 'toggle'
-do_test 10 'toggle'
 do_test 0 'decrease' 9001
 do_test 0 'get-volume'
 do_test 50 'increase' 50
 do_test 0 'mute'
 do_test 50 'unmute'
+do_test 0 'toggle'
+do_test 50 'toggle'
 do_test '' 'set-volume'
 do_test '' 'increase' foo
 do_test '' 'decrease' bar

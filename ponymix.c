@@ -136,13 +136,11 @@ struct io_t {
 struct cb_data_t {
 	void **data;
 	void *raw;
-	int rc;
 };
 
 struct pulseaudio_t {
 	pa_context *cxt;
 	pa_mainloop *mainloop;
-	int success;
 };
 
 struct colstr_t {
@@ -324,8 +322,8 @@ static void connect_state_cb(pa_context *cxt, void *raw)
 
 static void success_cb(pa_context UNUSED *c, int success, void *raw)
 {
-	struct pulseaudio_t *pulse = raw;
-	pulse->success = success;
+	int *rc = raw;
+	*rc = success;
 }
 
 static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
@@ -336,13 +334,15 @@ static void pulse_async_wait(struct pulseaudio_t *pulse, pa_operation *op)
 
 static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 {
+	int success = 0;
 	pa_cvolume *vol = pa_cvolume_set(&dev->volume, dev->volume.channels,
 			(int)fmax((double)(v + .5) * PA_VOLUME_NORM / 100, 0));
+
 	pa_operation *op = dev->op.setvol(pulse->cxt, dev->idx, vol,
-			success_cb, pulse);
+			success_cb, &success);
 	pulse_async_wait(pulse, op);
 
-	if (pulse->success)
+	if (success)
 		printf("%ld\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
@@ -351,11 +351,12 @@ static int set_volume(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 {
+	int success = 0;
 	pa_cvolume *vol;
 	pa_operation *op;
 
@@ -365,10 +366,10 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 	}
 
 	vol = pa_cvolume_set_balance(&dev->volume, &dev->channels, v / 100.0);
-	op = dev->op.setvol(pulse->cxt, dev->idx, vol, success_cb, pulse);
+	op = dev->op.setvol(pulse->cxt, dev->idx, vol, success_cb, &success);
 	pulse_async_wait(pulse, op);
 
-	if (pulse->success)
+	if (success)
 		printf("%ld\n", v);
 	else {
 		int err = pa_context_errno(pulse->cxt);
@@ -377,33 +378,35 @@ static int set_balance(struct pulseaudio_t *pulse, struct io_t *dev, long v)
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static int set_mute(struct pulseaudio_t *pulse, struct io_t *dev, int mute)
 {
+	int success = 0;
 	pa_operation* op;
 
 	/* new effective volume */
 	printf("%d\n", mute ? 0 : dev->volume_percent);
 
 	op = dev->op.mute(pulse->cxt, dev->idx, mute,
-			success_cb, pulse);
+			success_cb, &success);
 
 	pulse_async_wait(pulse, op);
 
-	if (!pulse->success) {
+	if (!success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to mute device: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 {
+	int success = 0;
 	pa_operation *op;
 
 	if (dev->op.kill == NULL) {
@@ -411,21 +414,22 @@ static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 		return 1;
 	}
 
-	op = dev->op.kill(pulse->cxt, dev->idx, success_cb, pulse);
+	op = dev->op.kill(pulse->cxt, dev->idx, success_cb, &success);
 	pulse_async_wait(pulse, op);
 
-	if (!pulse->success) {
+	if (!success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to kill client: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 {
+	int success = 0;
 	pa_operation* op;
 
 	if (dev->next == NULL) {
@@ -442,14 +446,14 @@ static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 
 	pulse_async_wait(pulse, op);
 
-	if (!pulse->success) {
+	if (!success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to move client: %s\n", pa_strerror(err));
 	}
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static void print_one(struct colstr_t *colstr, struct io_t *dev)
@@ -632,6 +636,7 @@ static struct io_t *get_default_source(struct pulseaudio_t *pulse)
 
 static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 {
+	int success = 0;
 	pa_operation *op;
 
 	if (dev->op.setdefault == NULL) {
@@ -639,10 +644,10 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 		return 1;
 	}
 
-	op = dev->op.setdefault(pulse->cxt, dev->name, success_cb, pulse);
+	op = dev->op.setdefault(pulse->cxt, dev->name, success_cb, &success);
 	pulse_async_wait(pulse, op);
 
-	if (!pulse->success) {
+	if (!success) {
 		int err = pa_context_errno(pulse->cxt);
 		fprintf(stderr, "failed to set default %s to %s: %s\n", dev->pp_name,
 				dev->name, pa_strerror(err));
@@ -650,7 +655,7 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 
 	pa_operation_unref(op);
 
-	return !pulse->success;
+	return !success;
 }
 
 static int pulse_init(struct pulseaudio_t *pulse)

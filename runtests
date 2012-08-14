@@ -28,6 +28,10 @@ do_test() {
   fi
 }
 
+# strictly invalid
+do_test '' 'herp'
+do_test '' 'derp' 100
+
 # volume
 do_test 50 'set-volume' 50
 do_test 10 'decrease' 40

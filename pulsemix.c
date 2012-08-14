@@ -78,6 +78,25 @@ enum action {
 	ACTION_INVALID
 };
 
+static const char *actions[ACTION_INVALID] = {
+	[ACTION_DEFAULTS] = "defaults",
+	[ACTION_LIST] = "list",
+	[ACTION_GETVOL] = "get-volume",
+	[ACTION_SETVOL] = "set-volume",
+	[ACTION_GETBAL] = "get-balance",
+	[ACTION_SETBAL] = "set-balance",
+	[ACTION_ADJBAL] = "adj-balance",
+	[ACTION_INCREASE] = "increase",
+	[ACTION_DECREASE] = "decrease",
+	[ACTION_MUTE] = "mute",
+	[ACTION_UNMUTE] = "unmute",
+	[ACTION_TOGGLE] = "toggle",
+	[ACTION_ISMUTED] = "is-muted",
+	[ACTION_SETDEFAULT] = "set-default",
+	[ACTION_MOVE] = "move",
+	[ACTION_KILL] = "kill"
+};
+
 struct io_t {
 	uint32_t idx;
 	char *name;
@@ -648,40 +667,13 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 
 static enum action string_to_verb(const char *string)
 {
-	if (strcmp(string, "defaults") == 0)
-		return ACTION_DEFAULTS;
-	else if (strcmp(string, "list") == 0)
-		return ACTION_LIST;
-	else if (strcmp(string, "get-volume") == 0)
-		return ACTION_GETVOL;
-	else if (strcmp(string, "set-volume") == 0)
-		return ACTION_SETVOL;
-	else if (strcmp(string, "get-balance") == 0)
-		return ACTION_GETBAL;
-	else if (strcmp(string, "set-balance") == 0)
-		return ACTION_SETBAL;
-	else if (strcmp(string, "adj-balance") == 0)
-		return ACTION_ADJBAL;
-	else if (strcmp(string, "increase") == 0)
-		return ACTION_INCREASE;
-	else if (strcmp(string, "decrease") == 0)
-		return ACTION_DECREASE;
-	else if (strcmp(string, "mute") == 0)
-		return ACTION_MUTE;
-	else if (strcmp(string, "unmute") == 0)
-		return ACTION_UNMUTE;
-	else if (strcmp(string, "toggle") == 0)
-		return ACTION_TOGGLE;
-	else if (strcmp(string, "is-muted") == 0)
-		return ACTION_ISMUTED;
-	else if (strcmp(string, "move") == 0)
-		return ACTION_MOVE;
-	else if (strcmp(string, "kill") == 0)
-		return ACTION_KILL;
-	else if (strcmp(string, "set-default") == 0)
-		return ACTION_SETDEFAULT;
+	size_t i;
 
-	return ACTION_INVALID;
+	for (i = 0; i < ACTION_INVALID; i++)
+		if (strcmp(actions[i], string) == 0)
+			break;
+
+	return i;
 }
 
 static int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)

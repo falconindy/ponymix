@@ -46,12 +46,6 @@
 		((_x > _high) ? _high : ((_x < _low) ? _low : _x)); \
 	})
 
-enum connectstate {
-	STATE_CONNECTING = 0,
-	STATE_CONNECTED,
-	STATE_ERROR
-};
-
 enum mode {
 	MODE_DEVICE = 0,
 	MODE_APP,
@@ -293,17 +287,8 @@ static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *
 
 static void state_cb(pa_context *cxt, void *raw)
 {
-	enum connectstate *state = raw;
-
-	switch (pa_context_get_state(cxt)) {
-	case PA_CONTEXT_READY:
-		*state = STATE_CONNECTED;
-		break;
-	case PA_CONTEXT_FAILED:
-		*state = STATE_ERROR;
-	default:
-		break;
-	}
+	enum pa_context_state *state = raw;
+	*state = pa_context_get_state(cxt);
 }
 
 static void success_cb(pa_context UNUSED *c, int success, void *raw)
@@ -586,7 +571,7 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 
 static int pulse_init(struct pulseaudio_t *pulse)
 {
-	enum connectstate state = STATE_CONNECTING;
+	enum pa_context_state state = PA_CONTEXT_CONNECTING;
 
 	pulse->mainloop = pa_mainloop_new();
 	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
@@ -594,10 +579,10 @@ static int pulse_init(struct pulseaudio_t *pulse)
 
 	pa_context_set_state_callback(pulse->cxt, state_cb, &state);
 	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
-	while (state == STATE_CONNECTING)
+	while (state != PA_CONTEXT_READY && state != PA_CONTEXT_FAILED)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 
-	if (state == STATE_ERROR) {
+	if (state != PA_CONTEXT_READY) {
 		fprintf(stderr, "failed to connect to pulse daemon: %s\n",
 				pa_strerror(pa_context_errno(pulse->cxt)));
 		return 1;

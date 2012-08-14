@@ -285,7 +285,7 @@ static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *
 	*source_name = i->default_source_name;
 }
 
-static void state_cb(pa_context *cxt, void *raw)
+static void connect_state_cb(pa_context *cxt, void *raw)
 {
 	enum pa_context_state *state = raw;
 	*state = pa_context_get_state(cxt);
@@ -577,7 +577,7 @@ static int pulse_init(struct pulseaudio_t *pulse)
 	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
 	pulse->head = NULL;
 
-	pa_context_set_state_callback(pulse->cxt, state_cb, &state);
+	pa_context_set_state_callback(pulse->cxt, connect_state_cb, &state);
 	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
 	while (state != PA_CONTEXT_READY && state != PA_CONTEXT_FAILED)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);

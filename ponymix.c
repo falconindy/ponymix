@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <pulse/pulseaudio.h>
 
@@ -45,6 +46,12 @@
 		typeof(high) _high = (high); \
 		((_x > _high) ? _high : ((_x < _low) ? _low : _x)); \
 	})
+
+#define COLOR_RESET    "\033[0m"
+#define COLOR_BOLD     "\033[1m"
+#define COLOR_RED      "\033[31m"
+#define COLOR_GREEN    "\033[32m"
+#define COLOR_YELLOW   "\033[33m"
 
 enum mode {
 	MODE_DEVICE = 0,
@@ -124,6 +131,15 @@ struct pulseaudio_t {
 	int success;
 
 	struct io_t *head;
+};
+
+struct colstr_t {
+	const char *name;
+	const char *high;
+	const char *mid;
+	const char *low;
+	const char *mute;
+	const char *nc;
 };
 
 static int xstrtol(const char *str, long *out)
@@ -421,19 +437,48 @@ static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !pulse->success;
 }
 
-static void print(struct io_t *dev)
+static void print(struct colstr_t *colstr, struct io_t *dev)
 {
-	printf("%s %2d: %s\n  %s\n  Avg. Volume: %d%% %s\n", dev->pp_name,
-			dev->idx, dev->name, dev->desc, dev->volume_percent,
-			dev->mute ? "[Muted]" : "");
+	const char *level;
+	const char *mute = dev->mute ? "[Muted]" : "";
+
+	if (dev->volume_percent < 50)
+		level = colstr->low;
+	else if (dev->volume_percent < 75)
+		level = colstr->mid;
+	else
+		level = colstr->high;
+
+	printf("%s%s %d:%s %s\n", colstr->name, dev->pp_name, dev->idx,
+			colstr->nc, dev->name);
+	printf("  %s\n", dev->desc);
+	printf("  Avg. Volume: %s%d%%%s %s%s%s\n", level, dev->volume_percent,
+			colstr->nc, colstr->mute, mute, colstr->nc);
 }
 
 static void print_all(struct pulseaudio_t *pulse)
 {
 	struct io_t *dev = pulse->head;
+	struct colstr_t colstr;
+
+	if (isatty(fileno(stdout))) {
+		colstr.name = COLOR_BOLD;
+		colstr.high = COLOR_RED;
+		colstr.mid = COLOR_YELLOW;
+		colstr.low = COLOR_GREEN;
+		colstr.mute = COLOR_BOLD COLOR_RED;
+		colstr.nc = COLOR_RESET;
+	} else {
+		colstr.name = "";
+		colstr.high = "";
+		colstr.mid = "";
+		colstr.low = "";
+		colstr.mute = "";
+		colstr.nc = "";
+	}
 
 	while (dev) {
-		print(dev);
+		print(&colstr, dev);
 		dev = dev->next;
 	}
 }

@@ -127,7 +127,6 @@ struct io_t {
 struct pulseaudio_t {
 	pa_context *cxt;
 	pa_mainloop *mainloop;
-	enum connectstate state;
 	int success;
 
 	struct io_t *head;
@@ -292,22 +291,17 @@ static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *
 	*source_name = i->default_source_name;
 }
 
-static void state_cb(pa_context UNUSED *c, void *raw)
+static void state_cb(pa_context *cxt, void *raw)
 {
-	struct pulseaudio_t *pulse = raw;
+	enum connectstate *state = raw;
 
-	switch (pa_context_get_state(pulse->cxt)) {
+	switch (pa_context_get_state(cxt)) {
 	case PA_CONTEXT_READY:
-		pulse->state = STATE_CONNECTED;
+		*state = STATE_CONNECTED;
 		break;
 	case PA_CONTEXT_FAILED:
-		pulse->state = STATE_ERROR;
-		break;
-	case PA_CONTEXT_UNCONNECTED:
-	case PA_CONTEXT_AUTHORIZING:
-	case PA_CONTEXT_SETTING_NAME:
-	case PA_CONTEXT_CONNECTING:
-	case PA_CONTEXT_TERMINATED:
+		*state = STATE_ERROR;
+	default:
 		break;
 	}
 }
@@ -590,31 +584,26 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !pulse->success;
 }
 
-static int pulse_connect(struct pulseaudio_t *pulse)
+static int pulse_init(struct pulseaudio_t *pulse)
 {
+	enum connectstate state = STATE_CONNECTING;
+
+	pulse->mainloop = pa_mainloop_new();
+	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
+	pulse->head = NULL;
+
+	pa_context_set_state_callback(pulse->cxt, state_cb, &state);
 	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
-	while (pulse->state == STATE_CONNECTING)
+	while (state == STATE_CONNECTING)
 		pa_mainloop_iterate(pulse->mainloop, 1, NULL);
 
-	if (pulse->state == STATE_ERROR) {
-		int r = pa_context_errno(pulse->cxt);
+	if (state == STATE_ERROR) {
 		fprintf(stderr, "failed to connect to pulse daemon: %s\n",
-				pa_strerror(r));
+				pa_strerror(pa_context_errno(pulse->cxt)));
 		return 1;
 	}
 
 	return 0;
-}
-
-static int pulse_init(struct pulseaudio_t *pulse)
-{
-	pulse->mainloop = pa_mainloop_new();
-	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
-	pulse->state = STATE_CONNECTING;
-	pulse->head = NULL;
-
-	pa_context_set_state_callback(pulse->cxt, state_cb, pulse);
-	return pulse_connect(pulse);
 }
 
 static void pulse_deinit(struct pulseaudio_t *pulse)

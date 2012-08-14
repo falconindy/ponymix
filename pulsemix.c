@@ -724,7 +724,7 @@ int main(int argc, char *argv[])
 	char *id = NULL, *arg = NULL;
 	long value = 0;
 	enum mode mode = MODE_DEVICE;
-	int rc = 0;
+	int rc = EXIT_SUCCESS;
 
 	const char *pp_name = "sink";
 	int (*fn_get_default)(struct pulseaudio_t *) = get_default_sink;
@@ -766,7 +766,7 @@ int main(int argc, char *argv[])
 			pp_name = "source";
 			break;
 		default:
-			exit(1);
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -811,7 +811,7 @@ int main(int argc, char *argv[])
 
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)
-		return 1;
+		return EXIT_FAILURE;
 
 	switch (verb) {
 	case ACTION_DEFAULTS:
@@ -841,7 +841,7 @@ int main(int argc, char *argv[])
 			warnx("%s id not set, no default operations", pp_name);
 		else
 			warnx("%s not found: %s", pp_name, id ? id : "default");
-		rc = 1;
+		rc = EXIT_FAILURE;
 		goto done;
 	}
 

@@ -256,14 +256,14 @@ static void source_output_add_cb(pa_context UNUSED *c, const pa_source_output_in
 static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
 		void *raw)
 {
-	const char **sink_name = (const char **)raw;
+	const char **sink_name = raw;
 
 	*sink_name = i->default_sink_name;
 }
 
 static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
 {
-	const char **source_name = (const char **)raw;
+	const char **source_name = raw;
 
 	*source_name = i->default_source_name;
 }

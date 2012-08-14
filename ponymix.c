@@ -78,23 +78,28 @@ enum action {
 	ACTION_INVALID
 };
 
-static const char *actions[ACTION_INVALID] = {
-	[ACTION_DEFAULTS] = "defaults",
-	[ACTION_LIST] = "list",
-	[ACTION_GETVOL] = "get-volume",
-	[ACTION_SETVOL] = "set-volume",
-	[ACTION_GETBAL] = "get-balance",
-	[ACTION_SETBAL] = "set-balance",
-	[ACTION_ADJBAL] = "adj-balance",
-	[ACTION_INCREASE] = "increase",
-	[ACTION_DECREASE] = "decrease",
-	[ACTION_MUTE] = "mute",
-	[ACTION_UNMUTE] = "unmute",
-	[ACTION_TOGGLE] = "toggle",
-	[ACTION_ISMUTED] = "is-muted",
-	[ACTION_SETDEFAULT] = "set-default",
-	[ACTION_MOVE] = "move",
-	[ACTION_KILL] = "kill"
+struct action_t {
+	const char *cmd;
+	int argreq;
+};
+
+static struct action_t actions[ACTION_INVALID] = {
+	[ACTION_DEFAULTS] = { "defaults", 0 },
+	[ACTION_LIST] = { "list", 0 },
+	[ACTION_GETVOL] = { "get-volume", 0 },
+	[ACTION_SETVOL] = { "set-volume", 1 },
+	[ACTION_GETBAL] = { "get-balance", 0 },
+	[ACTION_SETBAL] = { "set-balance", 1 },
+	[ACTION_ADJBAL] = { "adj-balance", 1 },
+	[ACTION_INCREASE] = { "increase", 1 },
+	[ACTION_DECREASE] = { "decrease", 1 },
+	[ACTION_MUTE] = { "mute", 0 },
+	[ACTION_UNMUTE] = { "unmute", 0 },
+	[ACTION_TOGGLE] = { "toggle", 0 },
+	[ACTION_ISMUTED] = { "is-muted", 0 },
+	[ACTION_SETDEFAULT] = { "set-default", 1 },
+	[ACTION_MOVE] = { "move", 2 },
+	[ACTION_KILL] = { "kill", 1 }
 };
 
 struct io_t {
@@ -670,7 +675,7 @@ static enum action string_to_verb(const char *string)
 	size_t i;
 
 	for (i = 0; i < ACTION_INVALID; i++)
-		if (strcmp(actions[i], string) == 0)
+		if (strcmp(actions[i].cmd, string) == 0)
 			break;
 
 	return i;
@@ -771,9 +776,13 @@ int main(int argc, char *argv[])
 	}
 
 	/* string -> enum */
-	verb = (optind == argc) ? (mode ? ACTION_LIST : ACTION_DEFAULTS) : string_to_verb(argv[optind]);
+	verb = string_to_verb(argv[optind]);
 	if (verb == ACTION_INVALID)
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
+
+	if (actions[verb].argreq != (argc - optind - 1))
+		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",
+				argv[optind], actions[verb].argreq);
 
 	optind++;
 	switch (verb) {
@@ -782,28 +791,16 @@ int main(int argc, char *argv[])
 	case ACTION_ADJBAL:
 	case ACTION_INCREASE:
 	case ACTION_DECREASE:
-		if (optind == argc)
-			errx(EXIT_FAILURE, "missing value for action '%s'", argv[optind - 1]);
-		else {
-			/* validate to number */
-			if (xstrtol(argv[optind], &value) < 0)
-				errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
-		}
+		if (xstrtol(argv[optind], &value) < 0)
+			errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
 		break;
 	case ACTION_SETDEFAULT:
 	case ACTION_KILL:
-		if (optind == argc)
-			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
-		else
-			id = argv[optind];
+		id = argv[optind];
 		break;
 	case ACTION_MOVE:
-		if (optind > argc - 2)
-			errx(EXIT_FAILURE, "missing arguments for action '%s'", argv[optind - 1]);
-		else {
-			id = argv[optind++];
-			arg = argv[optind];
-		}
+		id = argv[optind++];
+		arg = argv[optind];
 		break;
 	default:
 		break;

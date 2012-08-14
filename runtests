@@ -19,7 +19,7 @@ do_test() {
 
   (( ++testno ))
 
-  result=$("$ponymix" "$verb" -- ${arg+"$arg"} 2>/dev/null)
+  result=$("$ponymix" "$verb" -- ${3+"$arg"} 2>/dev/null)
   if [[ $result != $expected ]]; then
     printf '==> test %d FAIL: expected %s, got %s\n' "$testno" "$expected" "$result"
     (( ++fail ))

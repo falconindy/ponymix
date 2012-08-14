@@ -604,7 +604,7 @@ static int pulse_connect(struct pulseaudio_t *pulse)
 static int pulse_init(struct pulseaudio_t *pulse)
 {
 	pulse->mainloop = pa_mainloop_new();
-	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "lolpulse");
+	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
 	pulse->state = STATE_CONNECTING;
 	pulse->head = NULL;
 

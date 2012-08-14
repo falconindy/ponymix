@@ -775,16 +775,18 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* string -> enum */
-	verb = string_to_verb(argv[optind]);
+	if (optind == argc)
+		verb = mode == MODE_DEVICE ? ACTION_LIST : ACTION_DEFAULTS;
+	else
+		verb = string_to_verb(argv[optind++]);
+
 	if (verb == ACTION_INVALID)
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
 
-	if (actions[verb].argreq != (argc - optind - 1))
+	if (actions[verb].argreq != (argc - optind))
 		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",
-				argv[optind], actions[verb].argreq);
+				argv[optind - 1], actions[verb].argreq);
 
-	optind++;
 	switch (verb) {
 	case ACTION_SETVOL:
 	case ACTION_SETBAL:

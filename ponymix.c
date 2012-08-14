@@ -131,16 +131,20 @@ struct io_t {
 	} op;
 
 	struct io_t *next;
+	struct io_t *prev;
 };
 
 struct cb_data_t {
-	void **data;
+	struct io_t **list;
 	void *raw;
 };
 
 struct pulseaudio_t {
 	pa_context *cxt;
 	pa_mainloop *mainloop;
+
+	char *default_sink;
+	char *default_source;
 };
 
 struct colstr_t {
@@ -168,6 +172,34 @@ static int xstrtol(const char *str, long *out)
 		return -1;
 
 	return 0;
+}
+
+static void io_list_add(struct io_t **list, struct io_t *node)
+{
+	struct io_t *head = *list;
+
+	if (head == NULL)
+		head = node;
+	else {
+		head->prev->next = node;
+		node->prev = head->prev;
+	}
+
+	head->prev = node;
+	*list = head;
+}
+
+static void io_list_free(struct io_t *head)
+{
+	struct io_t *node = head;
+
+	while (node) {
+		node = head->next;
+		free(head->name);
+		free(head->desc);
+		free(head);
+		head = node;
+	}
 }
 
 static void populate_levels(struct io_t *node)
@@ -248,70 +280,42 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 		void *raw)
 {
 	struct cb_data_t *pony = raw;
-	struct io_t *sink;
-
 	if (eol)
 		return;
-
-	sink = sink_new(i);
-	sink->next = *pony->data;
-	*pony->data = sink;
+	io_list_add(pony->list, sink_new(i));
 }
 
 static void sink_input_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i, int eol,
 		void *raw)
 {
 	struct cb_data_t *pony = raw;
-	struct io_t *sink;
-
 	if (eol)
 		return;
-
-	sink = sink_input_new(i);
-	sink->next = *pony->data;
-	*pony->data = sink;
+	io_list_add(pony->list, sink_input_new(i));
 }
 
 static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol, void *raw)
 {
 	struct cb_data_t *pony = raw;
-	struct io_t *source;
-
 	if (eol)
 		return;
-
-	source = source_new(i);
-	source->next = *pony->data;
-	*pony->data = source;
+	io_list_add(pony->list, source_new(i));
 }
 
 static void source_output_add_cb(pa_context UNUSED *c, const pa_source_output_info *i, int eol,
 		void *raw)
 {
 	struct cb_data_t *pony = raw;
-	struct io_t *source;
-
 	if (eol)
 		return;
-
-	source = source_output_new(i);
-	source->next = *pony->data;
-	*pony->data = source;
+	io_list_add(pony->list, source_output_new(i));
 }
 
-static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i,
-		void *raw)
+static void server_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
 {
-	const char **sink_name = raw;
-
-	*sink_name = i->default_sink_name;
-}
-
-static void source_info_cb(pa_context UNUSED *c, const pa_server_info *i, void *raw)
-{
-	const char **source_name = raw;
-
-	*source_name = i->default_source_name;
+	struct pulseaudio_t *pulse = raw;
+	pulse->default_sink = strdup(i->default_sink_name);
+	pulse->default_source = strdup(i->default_source_name);
 }
 
 static void connect_state_cb(pa_context *cxt, void *raw)
@@ -481,9 +485,9 @@ static void print_one(struct colstr_t *colstr, struct io_t *dev)
 			colstr->nc, colstr->mute, mute, colstr->nc);
 }
 
-static void print_all(struct io_t *devs)
+static void print_all(struct io_t *head)
 {
-	struct io_t *dev = devs;
+	struct io_t *node = head;
 	struct colstr_t colstr;
 
 	if (isatty(fileno(stdout))) {
@@ -508,17 +512,16 @@ static void print_all(struct io_t *devs)
 		colstr.nc = "";
 	}
 
-	while (dev) {
-		print_one(&colstr, dev);
-		dev = dev->next;
+	while (node) {
+		print_one(&colstr, node);
+		node = node->next;
 	}
 }
 
-static struct io_t *populate_sinks(struct pulseaudio_t *pulse, enum mode mode)
+static int populate_sinks(struct pulseaudio_t *pulse, struct io_t **list, enum mode mode)
 {
 	pa_operation *op;
-	struct io_t *sinks = NULL;
-	struct cb_data_t pony = { .data = (void **)&sinks };
+	struct cb_data_t pony = { .list = list };
 
 	switch (mode) {
 	case MODE_APP:
@@ -531,15 +534,13 @@ static struct io_t *populate_sinks(struct pulseaudio_t *pulse, enum mode mode)
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-
-	return sinks;
+	return 0;
 }
 
-static struct io_t *get_sink_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
+static int get_sink_by_name(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
 {
 	pa_operation *op;
-	struct io_t *sinks = NULL;
-	struct cb_data_t pony = { .data = (void **)&sinks };
+	struct cb_data_t pony = { .list = list };
 
 	switch (mode) {
 	case MODE_APP:
@@ -547,7 +548,7 @@ static struct io_t *get_sink_by_name(struct pulseaudio_t *pulse, const char *nam
 		long id;
 		if (xstrtol(name, &id) < 0) {
 			warnx("application sink not valid id: %s", name);
-			return NULL;
+			return 1;
 		}
 		op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, &pony);
 		break;
@@ -559,26 +560,18 @@ static struct io_t *get_sink_by_name(struct pulseaudio_t *pulse, const char *nam
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-
-	return sinks;
+	return 0;
 }
 
-static struct io_t *get_default_sink(struct pulseaudio_t *pulse)
+static int get_default_sink(struct pulseaudio_t *pulse, struct io_t **list)
 {
-	const char *sink_name;
-	pa_operation *op = pa_context_get_server_info(pulse->cxt, server_info_cb,
-			&sink_name);
-	pulse_async_wait(pulse, op);
-	pa_operation_unref(op);
-
-	return get_sink_by_name(pulse, sink_name, MODE_DEVICE);
+	return get_sink_by_name(pulse, list, pulse->default_sink, MODE_DEVICE);
 }
 
-static struct io_t *populate_sources(struct pulseaudio_t *pulse, enum mode mode)
+static int populate_sources(struct pulseaudio_t *pulse, struct io_t **list, enum mode mode)
 {
 	pa_operation *op;
-	struct io_t *sources = NULL;
-	struct cb_data_t pony = { .data = (void **)&sources };
+	struct cb_data_t pony = { .list = list };
 
 	switch (mode) {
 	case MODE_APP:
@@ -591,15 +584,13 @@ static struct io_t *populate_sources(struct pulseaudio_t *pulse, enum mode mode)
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-
-	return sources;
+	return 0;
 }
 
-static struct io_t *get_source_by_name(struct pulseaudio_t *pulse, const char *name, enum mode mode)
+static int get_source_by_name(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
 {
 	pa_operation *op;
-	struct io_t *sources = NULL;
-	struct cb_data_t pony = { .data = (void **)&sources };
+	struct cb_data_t pony = { .list = list };
 
 	switch (mode) {
 	case MODE_APP:
@@ -607,7 +598,7 @@ static struct io_t *get_source_by_name(struct pulseaudio_t *pulse, const char *n
 		long id;
 		if (xstrtol(name, &id) < 0) {
 			warnx("application source not valid id: %s", name);
-			return NULL;
+			return 1;
 		}
 		op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, &pony);
 		break;
@@ -619,19 +610,12 @@ static struct io_t *get_source_by_name(struct pulseaudio_t *pulse, const char *n
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
-
-	return sources;
+	return 0;
 }
 
-static struct io_t *get_default_source(struct pulseaudio_t *pulse)
+static int get_default_source(struct pulseaudio_t *pulse, struct io_t **list)
 {
-	const char *source_name;
-	pa_operation *op = pa_context_get_server_info(pulse->cxt, source_info_cb,
-			&source_name);
-	pulse_async_wait(pulse, op);
-	pa_operation_unref(op);
-
-	return get_source_by_name(pulse, source_name, MODE_DEVICE);
+	return get_source_by_name(pulse, list, pulse->default_source, MODE_DEVICE);
 }
 
 static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
@@ -660,10 +644,13 @@ static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
 
 static int pulse_init(struct pulseaudio_t *pulse)
 {
+	pa_operation *op;
 	enum pa_context_state state = PA_CONTEXT_CONNECTING;
 
 	pulse->mainloop = pa_mainloop_new();
 	pulse->cxt = pa_context_new(pa_mainloop_get_api(pulse->mainloop), "bestpony");
+	pulse->default_sink = NULL;
+	pulse->default_source = NULL;
 
 	pa_context_set_state_callback(pulse->cxt, connect_state_cb, &state);
 	pa_context_connect(pulse->cxt, NULL, PA_CONTEXT_NOFLAGS, NULL);
@@ -676,6 +663,9 @@ static int pulse_init(struct pulseaudio_t *pulse)
 		return 1;
 	}
 
+	op = pa_context_get_server_info(pulse->cxt, server_info_cb, pulse);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
 	return 0;
 }
 
@@ -683,6 +673,8 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 {
 	pa_context_disconnect(pulse->cxt);
 	pa_mainloop_free(pulse->mainloop);
+	free(pulse->default_sink);
+	free(pulse->default_source);
 }
 
 static void __attribute__((__noreturn__)) usage(FILE *out)
@@ -782,18 +774,16 @@ static int do_verb(struct pulseaudio_t *pulse, struct io_t *devs, enum action ve
 int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
+	struct io_t *devices = NULL;
 	enum action verb;
-	char *id = NULL, *arg = NULL;
+	char *id = NULL;
 	long value = 0;
 	enum mode mode = MODE_DEVICE;
 	int rc = EXIT_SUCCESS;
 
-	struct io_t *sinks = NULL, *sources = NULL;
-	struct io_t *devs = NULL;
-
 	const char *pp_name = "sink";
-	struct io_t *(*fn_get_default)(struct pulseaudio_t *) = get_default_sink;
-	struct io_t *(*fn_get_by_name)(struct pulseaudio_t *, const char *, enum mode) = get_sink_by_name;
+	int (*fn_get_default)(struct pulseaudio_t *, struct io_t **) = get_default_sink;
+	int (*fn_get_by_name)(struct pulseaudio_t *, struct io_t **, const char *, enum mode) = get_sink_by_name;
 
 	static const struct option opts[] = {
 		{ "app", no_argument, 0, 'a' },
@@ -858,11 +848,8 @@ int main(int argc, char *argv[])
 		break;
 	case ACTION_SETDEFAULT:
 	case ACTION_KILL:
-		id = argv[optind];
-		break;
 	case ACTION_MOVE:
-		id = argv[optind++];
-		arg = argv[optind];
+		id = argv[optind];
 		break;
 	default:
 		break;
@@ -874,44 +861,51 @@ int main(int argc, char *argv[])
 
 	switch (verb) {
 	case ACTION_DEFAULTS:
-		sinks = get_default_sink(&pulse);
-		sources = get_default_source(&pulse);
-		print_all(sinks);
-		print_all(sources);
+		get_default_sink(&pulse, &devices);
+		get_default_source(&pulse, &devices);
+		print_all(devices);
 		goto done;
 	case ACTION_LIST:
-		sinks = populate_sinks(&pulse, mode);
-		sources = populate_sources(&pulse, mode);
-		print_all(sinks);
-		print_all(sources);
+		populate_sinks(&pulse, &devices, mode);
+		populate_sources(&pulse, &devices, mode);
+		print_all(devices);
 		goto done;
 	default:
 		break;
 	}
 
-	if (id && fn_get_by_name)
-		devs = fn_get_by_name(&pulse, id, mode);
-	else if (!mode && verb != ACTION_SETDEFAULT && fn_get_default)
-		devs = fn_get_default(&pulse);
+	if (id && fn_get_by_name) {
+		if (fn_get_by_name(&pulse, &devices, id, mode) != 0)
+			goto done;
+	} else if (!mode && fn_get_default) {
+		if (fn_get_default(&pulse, &devices) != 0)
+			goto done;
+	}
 
-	if (devs == NULL) {
+	if (!devices) {
 		if (mode && !id)
-			warnx("%s id not set, no default operations", pp_name);
+			warnx("a valid %s id is required", pp_name);
 		else
 			warnx("%s not found: %s", pp_name, id ? id : "default");
 		rc = EXIT_FAILURE;
 		goto done;
 	}
 
-	if (arg)
-		errx(EXIT_FAILURE, "MOVE not implemented just yet");
+	if (devices->next) {
+		warnx("%s does not uniquely identify a %s", id, pp_name);
+		rc = EXIT_FAILURE;
+		goto done;
+	}
+
 	/* if (arg && fn_get_by_name) */
 	/* 	fn_get_by_name(&pulse, arg, MODE_DEVICE); */
 
-	rc = do_verb(&pulse, devs, verb, value);
+	rc = do_verb(&pulse, devices, verb, value);
 
 done:
 	/* shut down */
+	if (devices)
+		io_list_free(devices);
 	pulse_deinit(&pulse);
 
 	return rc;

@@ -755,7 +755,7 @@ int main(int argc, char *argv[])
 		verb = string_to_verb(argv[optind++]);
 
 	if (verb == ACTION_INVALID)
-		errx(EXIT_FAILURE, "unknown action: %s", argv[optind]);
+		errx(EXIT_FAILURE, "unknown action: %s", argv[optind - 1]);
 
 	if (actions[verb].argreq != (argc - optind))
 		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",

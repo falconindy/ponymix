@@ -1,3 +1,4 @@
+CC = gcc -std=gnu99
 CFLAGS := -Wall -Wextra -pedantic -O2 -g -D_REENTRANT $(CFLAGS)
 LDFLAGS := -lpulse -lm $(LDFLAGS)
 

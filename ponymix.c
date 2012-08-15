@@ -49,9 +49,17 @@
 
 #define COLOR_RESET    "\033[0m"
 #define COLOR_BOLD     "\033[1m"
+#define COLOR_ITALIC   "\033[3m"
+#define COLOR_UL       "\033[4m"
+#define COLOR_BLINK    "\033[5m"
+#define COLOR_REV      "\033[7m"
 #define COLOR_RED      "\033[31m"
 #define COLOR_GREEN    "\033[32m"
 #define COLOR_YELLOW   "\033[33m"
+#define COLOR_BLUE     "\033[34m"
+#define COLOR_MAGENTA  "\033[35m"
+#define COLOR_CYAN     "\033[36m"
+#define COLOR_WHITE    "\033[37m"
 
 enum mode {
 	MODE_DEVICE = 0,
@@ -135,9 +143,12 @@ struct pulseaudio_t {
 
 struct colstr_t {
 	const char *name;
+	const char *over9000;
+	const char *veryhigh;
 	const char *high;
 	const char *mid;
 	const char *low;
+	const char *verylow;
 	const char *mute;
 	const char *nc;
 };
@@ -437,17 +448,23 @@ static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !pulse->success;
 }
 
-static void print(struct colstr_t *colstr, struct io_t *dev)
+static void print_one(struct colstr_t *colstr, struct io_t *dev)
 {
 	const char *level;
 	const char *mute = dev->mute ? "[Muted]" : "";
 
-	if (dev->volume_percent < 50)
+	if (dev->volume_percent < 20)
+		level = colstr->verylow;
+	else if (dev->volume_percent < 40)
 		level = colstr->low;
-	else if (dev->volume_percent < 75)
+	else if (dev->volume_percent < 60)
 		level = colstr->mid;
-	else
+	else if (dev->volume_percent < 80)
 		level = colstr->high;
+	else if (dev->volume_percent <= 100)
+		level = colstr->veryhigh;
+	else
+		level = colstr->over9000;
 
 	printf("%s%s %d:%s %s\n", colstr->name, dev->pp_name, dev->idx,
 			colstr->nc, dev->name);
@@ -463,22 +480,28 @@ static void print_all(struct pulseaudio_t *pulse)
 
 	if (isatty(fileno(stdout))) {
 		colstr.name = COLOR_BOLD;
-		colstr.high = COLOR_RED;
+		colstr.over9000 = COLOR_REV COLOR_RED;
+		colstr.veryhigh = COLOR_RED;
+		colstr.high = COLOR_MAGENTA;
 		colstr.mid = COLOR_YELLOW;
 		colstr.low = COLOR_GREEN;
+		colstr.verylow = COLOR_BLUE;
 		colstr.mute = COLOR_BOLD COLOR_RED;
 		colstr.nc = COLOR_RESET;
 	} else {
 		colstr.name = "";
+		colstr.over9000 = "";
+		colstr.veryhigh = "";
 		colstr.high = "";
 		colstr.mid = "";
 		colstr.low = "";
+		colstr.verylow = "";
 		colstr.mute = "";
 		colstr.nc = "";
 	}
 
 	while (dev) {
-		print(&colstr, dev);
+		print_one(&colstr, dev);
 		dev = dev->next;
 	}
 }

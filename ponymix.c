@@ -740,6 +740,11 @@ static int do_verb(struct pulseaudio_t *pulse, enum action verb, int value)
 		return set_balance(pulse, pulse->head,
 				CLAMP(pulse->head->balance + value, -100, 100));
 	case ACTION_INCREASE:
+		if (pulse->head->volume_percent > 100) {
+			printf("%d\n", pulse->head->volume_percent);
+			return 0;
+		}
+
 		return set_volume(pulse, pulse->head,
 				CLAMP(pulse->head->volume_percent + value, 0, 100));
 	case ACTION_DECREASE:

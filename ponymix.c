@@ -818,7 +818,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (optind == argc)
-		verb = mode == MODE_DEVICE ? ACTION_LIST : ACTION_DEFAULTS;
+		verb = mode == MODE_DEVICE ? ACTION_DEFAULTS : ACTION_LIST;
 	else
 		verb = string_to_verb(argv[optind++]);
 

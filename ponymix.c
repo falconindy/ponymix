@@ -159,6 +159,20 @@ struct colstr_t {
 	const char *nc;
 };
 
+struct runtime_t {
+	enum mode mode;
+	const char *pp_name;
+
+	int (*get_default)(struct pulseaudio_t *, struct io_t **);
+	int (*get_by_name)(struct pulseaudio_t *, struct io_t **, const char *, enum mode);
+};
+
+struct arg_t {
+	long value;
+	struct io_t *devices;
+	struct io_t *target;
+};
+
 static int xstrtol(const char *str, long *out)
 {
 	char *end = NULL;
@@ -187,19 +201,6 @@ static void io_list_add(struct io_t **list, struct io_t *node)
 
 	head->prev = node;
 	*list = head;
-}
-
-static void io_list_free(struct io_t *head)
-{
-	struct io_t *node = head;
-
-	while (node) {
-		node = head->next;
-		free(head->name);
-		free(head->desc);
-		free(head);
-		head = node;
-	}
 }
 
 static void populate_levels(struct io_t *node)
@@ -431,23 +432,22 @@ static int kill_client(struct pulseaudio_t *pulse, struct io_t *dev)
 	return !success;
 }
 
-static int move_client(struct pulseaudio_t *pulse, struct io_t *dev)
+static int move_client(struct pulseaudio_t *pulse, struct io_t *dev, struct io_t *target)
 {
 	int success = 0;
 	pa_operation* op;
 
-	if (dev->next == NULL) {
-		warnx("no destination to move to");
-		return 1;
-	}
-	if (dev->next->op.move == NULL) {
+	if (dev->op.move == NULL) {
 		warnx("only clients can be moved");
 		return 1;
 	}
 
-	op = dev->next->op.move(pulse->cxt, dev->next->idx, dev->idx, success_cb,
-			pulse);
+	if (target == NULL) {
+		warnx("no destination to move to");
+		return 1;
+	}
 
+	op = dev->op.move(pulse->cxt, dev->idx, target->idx, success_cb, &success);
 	pulse_async_wait(pulse, op);
 
 	if (!success) {
@@ -725,65 +725,102 @@ static enum action string_to_verb(const char *string)
 	return i;
 }
 
-static int do_verb(struct pulseaudio_t *pulse, struct io_t *devs, enum action verb, int value)
+static int do_verb(struct pulseaudio_t *pulse, enum action verb, struct arg_t *arg)
 {
+	struct io_t *device = arg->devices;
+	struct io_t *target = arg->target;
+
 	switch (verb) {
 	case ACTION_GETVOL:
-		printf("%d\n", devs->volume_percent);
+		printf("%d\n", device->volume_percent);
 		return 0;
 	case ACTION_SETVOL:
-		return set_volume(pulse, devs, CLAMP(value, 0, 150));
+		return set_volume(pulse, device, CLAMP(arg->value, 0, 150));
 	case ACTION_GETBAL:
-		printf("%d\n", devs->balance);
+		printf("%d\n", device->balance);
 		return 0;
 	case ACTION_SETBAL:
-		return set_balance(pulse, devs, CLAMP(value, -100, 100));
+		return set_balance(pulse, device, CLAMP(arg->value, -100, 100));
 	case ACTION_ADJBAL:
-		return set_balance(pulse, devs,
-				CLAMP(devs->balance + value, -100, 100));
+		return set_balance(pulse, device,
+				CLAMP(device->balance + arg->value, -100, 100));
 	case ACTION_INCREASE:
-		if (devs->volume_percent > 100) {
-			printf("%d\n", devs->volume_percent);
+		if (device->volume_percent > 100) {
+			printf("%d\n", device->volume_percent);
 			return 0;
 		}
 
-		return set_volume(pulse, devs,
-				CLAMP(devs->volume_percent + value, 0, 100));
+		return set_volume(pulse, device,
+				CLAMP(device->volume_percent + arg->value, 0, 100));
 	case ACTION_DECREASE:
-		return set_volume(pulse, devs,
-				CLAMP(devs->volume_percent - value, 0, 100));
+		return set_volume(pulse, device,
+				CLAMP(device->volume_percent - arg->value, 0, 100));
 	case ACTION_MUTE:
-		return set_mute(pulse, devs, 1);
+		return set_mute(pulse, device, 1);
 	case ACTION_UNMUTE:
-		return set_mute(pulse, devs, 0);
+		return set_mute(pulse, device, 0);
 	case ACTION_TOGGLE:
-		return set_mute(pulse, devs, !devs->mute);
+		return set_mute(pulse, device, !device->mute);
 	case ACTION_ISMUTED:
-		return !devs->mute;
+		return !device->mute;
 	case ACTION_MOVE:
-		return move_client(pulse, devs);
+		return move_client(pulse, device, target);
 	case ACTION_KILL:
-		return kill_client(pulse, devs);
+		return kill_client(pulse, device);
 	case ACTION_SETDEFAULT:
-		return set_default(pulse, devs);
+		return set_default(pulse, device);
 	default:
 		errx(EXIT_FAILURE, "internal error: unhandled verb id %d\n", verb);
 	}
 }
 
+static int get_device(struct pulseaudio_t *pulse, const char *id,
+		struct io_t **device, struct runtime_t *run)
+{
+	int rc = 0;
+
+	/* try to find device by id or a default device */
+	if (id && run->get_by_name) {
+		rc = run->get_by_name(pulse, device, id, run->mode);
+	} else if (run->get_default) {
+		rc = run->get_default(pulse, device);
+	}
+
+	if (rc != 0)
+		return rc;
+
+	/* if no device found, report an error */
+	if (!*device) {
+		if (!run->get_default)
+			warnx("a valid %s id is required", run->pp_name);
+		else
+			warnx("%s not found: %s", run->pp_name, id ? id : "default");
+		return 1;
+	}
+
+	/* if more then one device found, report an error */
+	if ((*device)->next) {
+		warnx("%s does not uniquely identify a %s", id, run->pp_name);
+		return 1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	struct pulseaudio_t pulse;
-	struct io_t *devices = NULL;
 	enum action verb;
 	char *id = NULL;
-	long value = 0;
-	enum mode mode = MODE_DEVICE;
 	int rc = EXIT_SUCCESS;
 
-	const char *pp_name = "sink";
-	int (*fn_get_default)(struct pulseaudio_t *, struct io_t **) = get_default_sink;
-	int (*fn_get_by_name)(struct pulseaudio_t *, struct io_t **, const char *, enum mode) = get_sink_by_name;
+	struct arg_t arg = { 0 };
+	struct runtime_t run = {
+		.mode        = MODE_DEVICE,
+		.pp_name     = "sink",
+		.get_default = get_default_sink,
+		.get_by_name = get_sink_by_name
+	};
 
 	static const struct option opts[] = {
 		{ "app", no_argument, 0, 'a' },
@@ -803,30 +840,33 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage(stdout);
 		case 'd':
-			mode = MODE_DEVICE;
+			run.mode = MODE_DEVICE;
 			break;
 		case 'a':
-			mode = MODE_APP;
+			run.mode = MODE_APP;
 			break;
 		case 'o':
 			id = optarg;
-			fn_get_default = get_default_sink;
-			fn_get_by_name = get_sink_by_name;
-			pp_name = "sink";
+			run.get_default = get_default_sink;
+			run.get_by_name = get_sink_by_name;
+			run.pp_name = "sink";
 			break;
 		case 'i':
 			id = optarg;
-			fn_get_default = get_default_source;
-			fn_get_by_name = get_source_by_name;
-			pp_name = "source";
+			run.get_default = get_default_source;
+			run.get_by_name = get_source_by_name;
+			run.pp_name = "source";
 			break;
 		default:
 			return EXIT_FAILURE;
 		}
 	}
 
+	if (run.mode == MODE_APP)
+		run.get_default = NULL;
+
 	if (optind == argc)
-		verb = mode == MODE_DEVICE ? ACTION_DEFAULTS : ACTION_LIST;
+		verb = run.mode == MODE_DEVICE ? ACTION_DEFAULTS : ACTION_LIST;
 	else
 		verb = string_to_verb(argv[optind++]);
 
@@ -837,75 +877,59 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",
 				argv[optind - 1], actions[verb].argreq);
 
-	switch (verb) {
-	case ACTION_SETVOL:
-	case ACTION_SETBAL:
-	case ACTION_ADJBAL:
-	case ACTION_INCREASE:
-	case ACTION_DECREASE:
-		if (xstrtol(argv[optind], &value) < 0)
-			errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
-		break;
-	case ACTION_SETDEFAULT:
-	case ACTION_KILL:
-	case ACTION_MOVE:
-		id = argv[optind];
-		break;
-	default:
-		break;
-	}
-
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)
 		return EXIT_FAILURE;
 
 	switch (verb) {
 	case ACTION_DEFAULTS:
-		get_default_sink(&pulse, &devices);
-		get_default_source(&pulse, &devices);
-		print_all(devices);
+		get_default_sink(&pulse, &arg.devices);
+		get_default_source(&pulse, &arg.devices);
+		print_all(arg.devices);
 		goto done;
 	case ACTION_LIST:
-		populate_sinks(&pulse, &devices, mode);
-		populate_sources(&pulse, &devices, mode);
-		print_all(devices);
+		populate_sinks(&pulse, &arg.devices, run.mode);
+		populate_sources(&pulse, &arg.devices, run.mode);
+		print_all(arg.devices);
 		goto done;
+	case ACTION_SETVOL:
+	case ACTION_SETBAL:
+	case ACTION_ADJBAL:
+	case ACTION_INCREASE:
+	case ACTION_DECREASE:
+		if (xstrtol(argv[optind], &arg.value) < 0)
+			errx(EXIT_FAILURE, "invalid number: %s", argv[optind]);
+	case ACTION_GETVOL:
+	case ACTION_GETBAL:
+	case ACTION_MUTE:
+	case ACTION_UNMUTE:
+	case ACTION_TOGGLE:
+	case ACTION_ISMUTED:
+		rc = get_device(&pulse, id, &arg.devices, &run);
+		if (rc)
+			goto done;
+		break;
+	case ACTION_SETDEFAULT:
+	case ACTION_KILL:
+	case ACTION_MOVE:
+		rc = get_device(&pulse, argv[optind], &arg.devices, &run);
+		if (rc)
+			goto done;
 	default:
 		break;
 	}
 
-	if (id && fn_get_by_name) {
-		if (fn_get_by_name(&pulse, &devices, id, mode) != 0)
+	if (verb == ACTION_MOVE) {
+		run.mode = MODE_DEVICE;
+		rc = get_device(&pulse, argv[optind + 1], &arg.target, &run);
+		if (rc)
 			goto done;
-	} else if (!mode && fn_get_default) {
-		if (fn_get_default(&pulse, &devices) != 0)
-			goto done;
 	}
 
-	if (!devices) {
-		if (mode && !id)
-			warnx("a valid %s id is required", pp_name);
-		else
-			warnx("%s not found: %s", pp_name, id ? id : "default");
-		rc = EXIT_FAILURE;
-		goto done;
-	}
-
-	if (devices->next) {
-		warnx("%s does not uniquely identify a %s", id, pp_name);
-		rc = EXIT_FAILURE;
-		goto done;
-	}
-
-	/* if (arg && fn_get_by_name) */
-	/* 	fn_get_by_name(&pulse, arg, MODE_DEVICE); */
-
-	rc = do_verb(&pulse, devices, verb, value);
+	rc = do_verb(&pulse, verb, &arg);
 
 done:
 	/* shut down */
-	if (devices)
-		io_list_free(devices);
 	pulse_deinit(&pulse);
 
 	return rc;

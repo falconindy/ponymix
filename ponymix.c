@@ -62,9 +62,9 @@
 #define COLOR_WHITE    "\033[37m"
 
 enum mode {
-	MODE_DEVICE = 0,
-	MODE_APP,
-	MODE_INVALID
+	MODE_DEVICE = 1 << 0,
+	MODE_APP    = 1 << 1,
+	MODE_ANY    = MODE_DEVICE | MODE_APP
 };
 
 enum action {
@@ -90,25 +90,26 @@ enum action {
 struct action_t {
 	const char *cmd;
 	int argreq;
+	enum mode argmode;
 };
 
 static struct action_t actions[ACTION_INVALID] = {
-	[ACTION_DEFAULTS] = { "defaults", 0 },
-	[ACTION_LIST] = { "list", 0 },
-	[ACTION_GETVOL] = { "get-volume", 0 },
-	[ACTION_SETVOL] = { "set-volume", 1 },
-	[ACTION_GETBAL] = { "get-balance", 0 },
-	[ACTION_SETBAL] = { "set-balance", 1 },
-	[ACTION_ADJBAL] = { "adj-balance", 1 },
-	[ACTION_INCREASE] = { "increase", 1 },
-	[ACTION_DECREASE] = { "decrease", 1 },
-	[ACTION_MUTE] = { "mute", 0 },
-	[ACTION_UNMUTE] = { "unmute", 0 },
-	[ACTION_TOGGLE] = { "toggle", 0 },
-	[ACTION_ISMUTED] = { "is-muted", 0 },
-	[ACTION_SETDEFAULT] = { "set-default", 1 },
-	[ACTION_MOVE] = { "move", 2 },
-	[ACTION_KILL] = { "kill", 1 }
+	[ACTION_DEFAULTS]   = { "defaults",    0, MODE_DEVICE },
+	[ACTION_LIST]       = { "list",        0, MODE_ANY },
+	[ACTION_GETVOL]     = { "get-volume",  0, MODE_ANY },
+	[ACTION_SETVOL]     = { "set-volume",  1, MODE_ANY },
+	[ACTION_GETBAL]     = { "get-balance", 0, MODE_ANY },
+	[ACTION_SETBAL]     = { "set-balance", 1, MODE_ANY },
+	[ACTION_ADJBAL]     = { "adj-balance", 1, MODE_ANY },
+	[ACTION_INCREASE]   = { "increase",    1, MODE_ANY },
+	[ACTION_DECREASE]   = { "decrease",    1, MODE_ANY },
+	[ACTION_MUTE]       = { "mute",        0, MODE_ANY },
+	[ACTION_UNMUTE]     = { "unmute",      0, MODE_ANY },
+	[ACTION_TOGGLE]     = { "toggle",      0, MODE_ANY },
+	[ACTION_ISMUTED]    = { "is-muted",    0, MODE_ANY },
+	[ACTION_SETDEFAULT] = { "set-default", 1, MODE_DEVICE },
+	[ACTION_MOVE]       = { "move",        2, MODE_APP },
+	[ACTION_KILL]       = { "kill",        1, MODE_APP },
 };
 
 struct io_t {
@@ -870,6 +871,9 @@ int main(int argc, char *argv[])
 	if (actions[verb].argreq != (argc - optind))
 		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",
 				argv[optind - 1], actions[verb].argreq);
+
+	if (!(actions[verb].argmode & run.mode))
+		errx(EXIT_FAILURE, "wrong mode for %s command", argv[optind - 1]);
 
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)

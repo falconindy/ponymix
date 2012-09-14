@@ -673,16 +673,12 @@ static void pulse_deinit(struct pulseaudio_t *pulse)
 	free(pulse->default_source);
 }
 
-static void __attribute__((__noreturn__)) usage(FILE *out)
+static void __attribute__((__noreturn__)) usage(FILE *out, enum mode mode)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n"
 	      " -h, --help              display this help and exit\n"
-
-	      "\n -d, --device            set device mode (default)\n"
-	      " -a, --app               set application mode\n"
-
-	      "\n -o, --sink=<name>       control a sink other than the default\n"
+	      " -o, --sink=<name>       control a sink other than the default\n"
 	      " -i, --source=<name>     control a source\n", out);
 
 	fputs("\nCommon Commands:\n"
@@ -699,13 +695,15 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	      "  toggle                 toggle mute\n"
 	      "  is-muted               check if muted\n", out);
 
-	fputs("\nDevice Commands:\n"
-	      "  defaults               list default devices\n"
-	      "  set-default DEVICE_ID  set default device by ID\n"
+	if (mode & MODE_DEVICE)
+		fputs("\nDevice Commands:\n"
+		      "  defaults               list default devices\n"
+		      "  set-default DEVICE_ID  set default device by ID\n", out);
 
-	      "\nApplication Commands:\n"
-	      "  move APP_ID DEVICE_ID  move application stream by ID to device ID\n"
-	      "  kill APP_ID            kill an application stream by ID\n", out);
+	if (mode & MODE_APP)
+		fputs("\nApplication Commands:\n"
+		      "  move APP_ID DEVICE_ID  move application stream by ID to device ID\n"
+		      "  kill APP_ID            kill an application stream by ID\n", out);
 
 	exit(out == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -819,28 +817,23 @@ int main(int argc, char *argv[])
 	};
 
 	static const struct option opts[] = {
-		{ "app", no_argument, 0, 'a' },
-		{ "device", no_argument, 0, 'd' },
 		{ "help", no_argument, 0, 'h' },
 		{ "sink", optional_argument, 0, 'o' },
 		{ "source", optional_argument, 0, 'i' },
 		{ 0, 0, 0, 0 },
 	};
 
+	if (strcmp(program_invocation_short_name, "ponymux") == 0)
+			run.mode = MODE_APP;
+
 	for (;;) {
-		int opt = getopt_long(argc, argv, "adhi::o::", opts, NULL);
+		int opt = getopt_long(argc, argv, "hi::o::", opts, NULL);
 		if (opt == -1)
 			break;
 
 		switch (opt) {
 		case 'h':
-			usage(stdout);
-		case 'd':
-			run.mode = MODE_DEVICE;
-			break;
-		case 'a':
-			run.mode = MODE_APP;
-			break;
+			usage(stdout, run.mode);
 		case 'o':
 			id = optarg;
 			run.get_default = get_default_sink;
@@ -866,15 +859,12 @@ int main(int argc, char *argv[])
 	else
 		verb = string_to_verb(argv[optind++]);
 
-	if (verb == ACTION_INVALID)
+	if (verb == ACTION_INVALID || !(actions[verb].argmode & run.mode))
 		errx(EXIT_FAILURE, "unknown action: %s", argv[optind - 1]);
 
 	if (actions[verb].argreq != (argc - optind))
 		errx(EXIT_FAILURE, "wrong number of args for %s command (requires %d)",
 				argv[optind - 1], actions[verb].argreq);
-
-	if (!(actions[verb].argmode & run.mode))
-		errx(EXIT_FAILURE, "wrong mode for %s command", argv[optind - 1]);
 
 	/* initialize connection */
 	if (pulse_init(&pulse) != 0)

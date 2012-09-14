@@ -812,6 +812,7 @@ int main(int argc, char *argv[])
 
 	struct arg_t arg = { 0 };
 	struct runtime_t run = {
+		.mode        = MODE_DEVICE,
 		.pp_name     = "sink",
 		.get_default = get_default_sink,
 		.get_by_name = get_sink_by_name

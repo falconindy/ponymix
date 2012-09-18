@@ -815,7 +815,7 @@ int main(int argc, char *argv[])
 	char *id = NULL;
 	int rc = EXIT_SUCCESS;
 
-	struct arg_t arg = { 0 };
+	struct arg_t arg = { 0, NULL, NULL };
 	struct runtime_t run = {
 		.mode        = MODE_DEVICE,
 		.pp_name     = "sink",

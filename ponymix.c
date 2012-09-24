@@ -239,7 +239,7 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 {
 	struct io_t *sink;
 
-	IO_NEW(sink, info, "sink");
+	IO_NEW(sink, info, "output");
 	sink->desc = strdup(
 		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	sink->op.mute = pa_context_set_sink_input_mute;
@@ -267,7 +267,7 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 {
 	struct io_t *source;
 
-	IO_NEW(source, info, "source");
+	IO_NEW(source, info, "input");
 	source->desc = strdup(
 		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	source->op.mute = pa_context_set_source_output_mute;

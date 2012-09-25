@@ -828,7 +828,9 @@ int main(int argc, char *argv[])
 		{ "device", no_argument, 0, 'd' },
 		{ "help", no_argument, 0, 'h' },
 		{ "sink", optional_argument, 0, 'o' },
+		{ "output", optional_argument, 0, 'o' },
 		{ "source", optional_argument, 0, 'i' },
+		{ "input", optional_argument, 0, 'i' },
 		{ 0, 0, 0, 0 },
 	};
 

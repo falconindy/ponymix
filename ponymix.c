@@ -705,7 +705,7 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	      "  is-muted               check if muted\n", out);
 
 	fputs("\nDevice Commands:\n"
-	      "  defaults               list default devices\n"
+	      "  defaults               list default devices (default command)\n"
 	      "  set-default DEVICE_ID  set default device by ID\n"
 
 	      "\nApplication Commands:\n"

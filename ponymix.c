@@ -137,7 +137,7 @@ struct io_t {
 
 struct cb_data_t {
 	struct io_t **list;
-	void *raw;
+	const char *glob;
 };
 
 struct pulseaudio_t {
@@ -239,7 +239,7 @@ static struct io_t *sink_input_new(const pa_sink_input_info *info)
 {
 	struct io_t *sink;
 
-	IO_NEW(sink, info, "sink");
+	IO_NEW(sink, info, "output");
 	sink->desc = strdup(
 		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	sink->op.mute = pa_context_set_sink_input_mute;
@@ -267,7 +267,7 @@ static struct io_t *source_output_new(const pa_source_output_info *info)
 {
 	struct io_t *source;
 
-	IO_NEW(source, info, "source");
+	IO_NEW(source, info, "input");
 	source->desc = strdup(
 		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
 	source->op.mute = pa_context_set_source_output_mute;
@@ -284,6 +284,8 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
+	if (pony->glob && strstr(pony->glob, i->name) != NULL)
+		return;
 	io_list_add(pony->list, sink_new(i));
 }
 
@@ -293,6 +295,9 @@ static void sink_input_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i,
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
+	if (pony->glob && !(strstr(pony->glob, i->name) == NULL ||
+			strstr(pony->glob, pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME)) == NULL))
+		return;
 	io_list_add(pony->list, sink_input_new(i));
 }
 
@@ -300,6 +305,8 @@ static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol
 {
 	struct cb_data_t *pony = raw;
 	if (eol)
+		return;
+	if (pony->glob && strstr(pony->glob, i->name) != NULL)
 		return;
 	io_list_add(pony->list, source_new(i));
 }
@@ -309,6 +316,9 @@ static void source_output_add_cb(pa_context UNUSED *c, const pa_source_output_in
 {
 	struct cb_data_t *pony = raw;
 	if (eol)
+		return;
+	if (pony->glob && !(strstr(pony->glob, i->name) == NULL ||
+			strstr(pony->glob, pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME)) == NULL))
 		return;
 	io_list_add(pony->list, source_output_new(i));
 }
@@ -519,10 +529,10 @@ static void print_all(struct io_t *head)
 	}
 }
 
-static int populate_sinks(struct pulseaudio_t *pulse, struct io_t **list, enum mode mode)
+static int populate_sinks(struct pulseaudio_t *pulse, struct io_t **list, const char *filter, enum mode mode)
 {
 	pa_operation *op;
-	struct cb_data_t pony = { .list = list };
+	struct cb_data_t pony = { .list = list, .glob = filter };
 
 	switch (mode) {
 	case MODE_APP:
@@ -538,41 +548,47 @@ static int populate_sinks(struct pulseaudio_t *pulse, struct io_t **list, enum m
 	return 0;
 }
 
-static int get_sink_by_name(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
+static int find_sink(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
+{
+	long id;
+
+	if (xstrtol(name, &id) < 0)
+		populate_sinks(pulse, list, name, mode);
+	else {
+		pa_operation *op;
+		struct cb_data_t pony = { .list = list };
+
+		switch (mode) {
+		case MODE_APP:
+			op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, &pony);
+			break;
+		case MODE_DEVICE:
+		default:
+			op = pa_context_get_sink_info_by_index(pulse->cxt, (uint32_t)id, sink_add_cb, &pony);
+		}
+
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
+	}
+	return 0;
+}
+
+static int get_default_sink(struct pulseaudio_t *pulse, struct io_t **list)
 {
 	pa_operation *op;
 	struct cb_data_t pony = { .list = list };
 
-	switch (mode) {
-	case MODE_APP:
-	{
-		long id;
-		if (xstrtol(name, &id) < 0) {
-			warnx("application sink not valid id: %s", name);
-			return 1;
-		}
-		op = pa_context_get_sink_input_info(pulse->cxt, (uint32_t)id, sink_input_add_cb, &pony);
-		break;
-	}
-	case MODE_DEVICE:
-	default:
-		op = pa_context_get_sink_info_by_name(pulse->cxt, name, sink_add_cb, &pony);
-	}
+	op = pa_context_get_sink_info_by_name(pulse->cxt, pulse->default_sink, sink_add_cb, &pony);
 
 	pulse_async_wait(pulse, op);
 	pa_operation_unref(op);
 	return 0;
 }
 
-static int get_default_sink(struct pulseaudio_t *pulse, struct io_t **list)
-{
-	return get_sink_by_name(pulse, list, pulse->default_sink, MODE_DEVICE);
-}
-
-static int populate_sources(struct pulseaudio_t *pulse, struct io_t **list, enum mode mode)
+static int populate_sources(struct pulseaudio_t *pulse, struct io_t **list, const char *filter, enum mode mode)
 {
 	pa_operation *op;
-	struct cb_data_t pony = { .list = list };
+	struct cb_data_t pony = { .list = list, .glob = filter };
 
 	switch (mode) {
 	case MODE_APP:
@@ -588,35 +604,42 @@ static int populate_sources(struct pulseaudio_t *pulse, struct io_t **list, enum
 	return 0;
 }
 
-static int get_source_by_name(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
+static int find_source(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
 {
-	pa_operation *op;
-	struct cb_data_t pony = { .list = list };
+	long id;
 
-	switch (mode) {
-	case MODE_APP:
-	{
-		long id;
-		if (xstrtol(name, &id) < 0) {
-			warnx("application source not valid id: %s", name);
-			return 1;
+	if (xstrtol(name, &id) < 0)
+		populate_sources(pulse, list, name, mode);
+	else {
+		pa_operation *op;
+		struct cb_data_t pony = { .list = list };
+
+		switch (mode) {
+		case MODE_APP:
+			op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, &pony);
+			break;
+		case MODE_DEVICE:
+		default:
+			op = pa_context_get_source_info_by_index(pulse->cxt, (uint32_t)id, source_add_cb, &pony);
 		}
-		op = pa_context_get_source_output_info(pulse->cxt, (uint32_t)id, source_output_add_cb, &pony);
-		break;
-	}
-	case MODE_DEVICE:
-	default:
-		op = pa_context_get_source_info_by_name(pulse->cxt, name, source_add_cb, &pony);
+
+		pulse_async_wait(pulse, op);
+		pa_operation_unref(op);
 	}
 
-	pulse_async_wait(pulse, op);
-	pa_operation_unref(op);
 	return 0;
 }
 
 static int get_default_source(struct pulseaudio_t *pulse, struct io_t **list)
 {
-	return get_source_by_name(pulse, list, pulse->default_source, MODE_DEVICE);
+	pa_operation *op;
+	struct cb_data_t pony = { .list = list };
+
+	op = pa_context_get_source_info_by_name(pulse->cxt, pulse->default_source, source_add_cb, &pony);
+
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+	return 0;
 }
 
 static int set_default(struct pulseaudio_t *pulse, struct io_t *dev)
@@ -820,7 +843,7 @@ int main(int argc, char *argv[])
 		.mode        = MODE_DEVICE,
 		.pp_name     = "sink",
 		.get_default = get_default_sink,
-		.get_by_name = get_sink_by_name
+		.get_by_name = find_sink
 	};
 
 	static const struct option opts[] = {
@@ -828,7 +851,9 @@ int main(int argc, char *argv[])
 		{ "device", no_argument, 0, 'd' },
 		{ "help", no_argument, 0, 'h' },
 		{ "sink", optional_argument, 0, 'o' },
+		{ "output", optional_argument, 0, 'o' },
 		{ "source", optional_argument, 0, 'i' },
+		{ "input", optional_argument, 0, 'i' },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -849,13 +874,13 @@ int main(int argc, char *argv[])
 		case 'o':
 			id = optarg;
 			run.get_default = get_default_sink;
-			run.get_by_name = get_sink_by_name;
+			run.get_by_name = find_sink;
 			run.pp_name = "sink";
 			break;
 		case 'i':
 			id = optarg;
 			run.get_default = get_default_source;
-			run.get_by_name = get_source_by_name;
+			run.get_by_name = find_source;
 			run.pp_name = "source";
 			break;
 		default:
@@ -892,8 +917,8 @@ int main(int argc, char *argv[])
 		print_all(arg.devices);
 		goto done;
 	case ACTION_LIST:
-		populate_sinks(&pulse, &arg.devices, run.mode);
-		populate_sources(&pulse, &arg.devices, run.mode);
+		populate_sinks(&pulse, &arg.devices, NULL, run.mode);
+		populate_sources(&pulse, &arg.devices, NULL, run.mode);
 		print_all(arg.devices);
 		goto done;
 	case ACTION_SETVOL:

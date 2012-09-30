@@ -682,12 +682,12 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 {
 	fprintf(out, "usage: %s [options] <command>...\n", program_invocation_short_name);
 	fputs("\nOptions:\n"
-	      " -h, --help              display this help and exit\n"
+	      " -h, --help                    display this help and exit\n\n"
 
-	      "\n -d, --device            set device mode (default)\n"
-	      " -a, --app               set application mode\n"
+	      " -d, --device                  set device mode (default)\n"
+	      " -a, --app                     set application mode\n\n"
 
-	      "\n -o<name>, --sink=<name>       control a sink other than the default\n"
+	      " -o<name>, --sink=<name>       control a sink other than the default\n"
 	      " -i<name>, --source=<name>     control a source\n", out);
 
 	fputs("\nCommon Commands:\n"

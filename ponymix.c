@@ -711,7 +711,9 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	      " -a, --app                     set application mode\n\n"
 
 	      " -o<name>, --sink=<name>       control a sink other than the default\n"
-	      " -i<name>, --source=<name>     control a source\n", out);
+	      "           --output=<name>\n"
+	      " -i<name>, --source=<name>     control a source\n"
+	      "           --input=<name>\n", out);
 
 	fputs("\nCommon Commands:\n"
 	      "  list                   list available devices\n"

@@ -1,6 +1,9 @@
-CC = gcc -std=gnu99
-CFLAGS := -Wall -Wextra -pedantic -O2 -g -D_REENTRANT $(CFLAGS)
-LDLIBS := -lpulse -lm
+CC			= gcc -std=gnu99
+CFLAGS		:= -Wall -Wextra -pedantic -O2 -g -D_REENTRANT $(CFLAGS)
+LDLIBS		:= -lpulse -lm
+
+PREFIX		?= /usr/local
+MANPREFIX	?= $(PREFIX)/share/man
 
 all: ponymix doc
 
@@ -12,12 +15,12 @@ ponymix.1: README.pod
 ponymix: ponymix.o
 
 install: ponymix
-	install -Dm755 ponymix $(DESTDIR)/usr/bin/ponymix
-	install -Dm644 ponymix.1 $(DESTDIR)/usr/share/man/man1/ponymix.1
+	install -Dm755 ponymix $(DESTDIR)$(PREFIX)/bin/ponymix
+	install -Dm644 ponymix.1 $(DESTDIR)$(MANPREFIX)/man1/ponymix.1
 
 uninstall:
-	rm -f $(DESTDIR)/usr/bin/ponymix
-	rm -f $(DESTDIR)/usr/share/man/man1/ponymix.1
+	rm -f $(DESTDIR)$(PREFIX)/bin/ponymix
+	rm -f $(DESTDIR)$(MANPREFIX)/man1/ponymix.1
 
 check: ponymix
 	./runtests ./ponymix

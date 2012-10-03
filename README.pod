@@ -1,0 +1,123 @@
+=head1 NAME
+
+ponymix - CLI volume control and stream management for PulseAudio
+
+=head1 SYNOPSIS
+
+ponymix [options] [operation] [args]
+
+=head1 DESCRIPTION
+
+ponymix is a command line volume control and stream manager for PulseAudio, allowing you to perform many operations on sinks and sources of both devices and applications.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-d,> --device
+
+Control input and output devices.
+
+=item B<-a,> --app
+
+Control the playback and recording streams.
+
+=item B<-o[=SINK],> --sink[=SINK], --output[=SINK]
+
+Specify the device sink or application output stream to control.  If the argument is omitted, the default sink is used.  SINK must be the numeric index of the sink.
+
+=item B<-i[=SOURCE],> --source[=SOURCE], --input[=SOURCE]
+
+Specify the device source or application input stream to control.  If the argument is omitted, the default source is used.  SOURCE must be the numeric index of the source.
+
+When neither -o nor -i are specified, the default source is used.  When neither -d nor -a are specified, ponymix will operate on devices.
+
+=back
+
+=head1 OPERATIONS
+
+When invoked without an operation, ponymix will display information on the current default sink and source in device mode or active streams in application mode.
+
+=head2 Common Operations
+
+=over 4
+
+=item list
+
+List all available sinks and sources in device mode or inputs and outputs in application mode.
+
+=item get-volume
+
+Gets the current volume of the targe.
+
+=item set-volume VALUE
+
+Sets the volume of the target.  VALUE is an integer between 0 and 150.
+
+=item increase VALUE
+
+Increases the volume of target device or application by integer VALUE.  Increasing the volume with this method is capped at 100.
+
+=item decrease VALUE
+
+Decreases the volume of target device or application by integer VALUE.  Decreasing the volume with this method is capped at 0.
+
+=item mute, unmute, toggle
+
+Mutes, unmutes, or toggles the mute status on the target.
+
+=item is-muted
+
+Checks if the target is muted.  ponymix will exit with status 0 if muted and non-zero otherwise.
+
+=item get-balance
+
+Get the current balance of the target.
+
+=item set-balance VALUE
+
+Set the balance of the target.  VALUE is an integer from -100 (full left) to 100 (full right).
+
+=item adj-balance VALUE
+
+Adjust balance by the integer increment VALUE.  The resulting balance has the same bounds as those set by set-balance.  The end-of-options indicator (--) is required when passing a negative increment.
+
+=back
+
+=head2 Device Operations
+
+=over 4
+
+=item defaults
+
+Display the current default sink and source.
+
+=item set-default DEVICE_INDEX
+
+Set the default sink or source by numeric index, depending on whether -i or -o are set.
+
+=back
+
+=head2 Application Operations
+
+=over 4
+
+=item move APP_INDEX DEVICE_INDEX
+
+Move the application's stream by numeric index to another device by numeric index; ponymix controls outputs if -o is set and inputs if -i is set.
+
+=item kill APP_INDEX
+
+Kill an application's stream by numeric index.
+
+=back
+
+=head1 AUTHORS
+
+Dave Reisner E<lt>dreisner@archlinux.orgE<gt>
+
+Simon Gomizelg E<lt>simongmzlj@gmail.comE<gt>
+
+=head1 SEE ALSO
+
+pulseaudio(1)

@@ -284,7 +284,7 @@ static void sink_add_cb(pa_context UNUSED *c, const pa_sink_info *i, int eol,
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
-	if (pony->glob && strstr(pony->glob, i->name) != NULL)
+	if (pony->glob && strstr(i->name, pony->glob) == NULL)
 		return;
 	io_list_add(pony->list, sink_new(i));
 }
@@ -295,8 +295,8 @@ static void sink_input_add_cb(pa_context UNUSED *c, const pa_sink_input_info *i,
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
-	if (pony->glob && !(strstr(pony->glob, i->name) == NULL ||
-			strstr(pony->glob, pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME)) == NULL))
+	if (pony->glob && strstr(i->name, pony->glob) == NULL &&
+			strstr(pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME), pony->glob) == NULL)
 		return;
 	io_list_add(pony->list, sink_input_new(i));
 }
@@ -306,7 +306,7 @@ static void source_add_cb(pa_context UNUSED *c, const pa_source_info *i, int eol
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
-	if (pony->glob && strstr(pony->glob, i->name) != NULL)
+	if (pony->glob && strstr(i->name, pony->glob) == NULL)
 		return;
 	io_list_add(pony->list, source_new(i));
 }
@@ -317,8 +317,8 @@ static void source_output_add_cb(pa_context UNUSED *c, const pa_source_output_in
 	struct cb_data_t *pony = raw;
 	if (eol)
 		return;
-	if (pony->glob && !(strstr(pony->glob, i->name) == NULL ||
-			strstr(pony->glob, pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME)) == NULL))
+	if (pony->glob && strstr(i->name, pony->glob) == NULL &&
+			strstr(pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME), pony->glob) == NULL)
 		return;
 	io_list_add(pony->list, source_output_new(i));
 }

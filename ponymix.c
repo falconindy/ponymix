@@ -238,10 +238,12 @@ static struct io_t *sink_new(const pa_sink_info *info)
 static struct io_t *sink_input_new(const pa_sink_input_info *info)
 {
 	struct io_t *sink;
+	const char *app_name;
 
 	IO_NEW(sink, info, "output");
-	sink->desc = strdup(
-		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
+	app_name = pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME);
+	if (app_name)
+		sink->desc = strdup(app_name ? app_name : "");
 	sink->op.mute = pa_context_set_sink_input_mute;
 	sink->op.setvol = pa_context_set_sink_input_volume;
 	sink->op.move = pa_context_move_sink_input_by_index;

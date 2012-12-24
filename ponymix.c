@@ -216,7 +216,7 @@ static void populate_levels(struct io_t *node)
 	io = calloc(1, sizeof(struct io_t)); \
 	io->idx = info->index; \
 	io->mute = info->mute; \
-	io->name = strdup(info->name); \
+	io->name = strdup(info->name ? info->name : ""); \
 	io->pp_name = pp; \
 	memcpy(&io->volume, &info->volume, sizeof(pa_cvolume)); \
 	memcpy(&io->channels, &info->channel_map, sizeof(pa_channel_map)); \

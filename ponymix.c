@@ -268,10 +268,11 @@ static struct io_t *source_new(const pa_source_info *info)
 static struct io_t *source_output_new(const pa_source_output_info *info)
 {
 	struct io_t *source;
+	const char *desc;
 
 	IO_NEW(source, info, "input");
-	source->desc = strdup(
-		pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME));
+	desc = pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME);
+	source->desc = strdup(desc ? desc : "");
 	source->op.mute = pa_context_set_source_output_mute;
 	source->op.setvol = pa_context_set_source_output_volume;
 	source->op.move = pa_context_move_source_output_by_index;

@@ -84,7 +84,9 @@ enum action {
 	ACTION_SETDEFAULT,
 	ACTION_MOVE,
 	ACTION_KILL,
-	ACTION_INVALID
+	ACTION_GETPROFILE,
+	ACTION_SETPROFILE,
+	ACTION_INVALID,
 };
 
 struct action_t {
@@ -94,22 +96,24 @@ struct action_t {
 };
 
 static struct action_t actions[ACTION_INVALID] = {
-	[ACTION_DEFAULTS]   = { "defaults",    0, MODE_DEVICE },
-	[ACTION_LIST]       = { "list",        0, MODE_ANY },
-	[ACTION_GETVOL]     = { "get-volume",  0, MODE_ANY },
-	[ACTION_SETVOL]     = { "set-volume",  1, MODE_ANY },
-	[ACTION_GETBAL]     = { "get-balance", 0, MODE_ANY },
-	[ACTION_SETBAL]     = { "set-balance", 1, MODE_ANY },
-	[ACTION_ADJBAL]     = { "adj-balance", 1, MODE_ANY },
-	[ACTION_INCREASE]   = { "increase",    1, MODE_ANY },
-	[ACTION_DECREASE]   = { "decrease",    1, MODE_ANY },
-	[ACTION_MUTE]       = { "mute",        0, MODE_ANY },
-	[ACTION_UNMUTE]     = { "unmute",      0, MODE_ANY },
-	[ACTION_TOGGLE]     = { "toggle",      0, MODE_ANY },
-	[ACTION_ISMUTED]    = { "is-muted",    0, MODE_ANY },
-	[ACTION_SETDEFAULT] = { "set-default", 1, MODE_DEVICE },
-	[ACTION_MOVE]       = { "move",        2, MODE_APP },
-	[ACTION_KILL]       = { "kill",        1, MODE_APP },
+	[ACTION_DEFAULTS]   = { "defaults",      0, MODE_DEVICE },
+	[ACTION_LIST]       = { "list",          0, MODE_ANY },
+	[ACTION_GETVOL]     = { "get-volume",    0, MODE_ANY },
+	[ACTION_SETVOL]     = { "set-volume",    1, MODE_ANY },
+	[ACTION_GETBAL]     = { "get-balance",   0, MODE_ANY },
+	[ACTION_SETBAL]     = { "set-balance",   1, MODE_ANY },
+	[ACTION_ADJBAL]     = { "adj-balance",   1, MODE_ANY },
+	[ACTION_INCREASE]   = { "increase",      1, MODE_ANY },
+	[ACTION_DECREASE]   = { "decrease",      1, MODE_ANY },
+	[ACTION_MUTE]       = { "mute",          0, MODE_ANY },
+	[ACTION_UNMUTE]     = { "unmute",        0, MODE_ANY },
+	[ACTION_TOGGLE]     = { "toggle",        0, MODE_ANY },
+	[ACTION_ISMUTED]    = { "is-muted",      0, MODE_ANY },
+	[ACTION_SETDEFAULT] = { "set-default",   1, MODE_DEVICE },
+	[ACTION_MOVE]       = { "move",          2, MODE_APP },
+	[ACTION_KILL]       = { "kill",          1, MODE_APP },
+	[ACTION_GETPROFILE] = { "list-profiles", 0, MODE_DEVICE },
+	[ACTION_SETPROFILE] = { "set-profile",   1, MODE_DEVICE },
 };
 
 struct io_t {
@@ -607,6 +611,43 @@ static int populate_sources(struct pulseaudio_t *pulse, struct io_t **list, cons
 	return 0;
 }
 
+static void pa_card_info_cb(pa_context UNUSED *c, const pa_card_info *info, int eol, void UNUSED *userdata) {
+	int i;
+	const char *active_profile;
+
+	if (eol) return;
+
+	active_profile = info->active_profile->name;
+
+	for (i = 0; info->profiles && info->profiles[i].name; i++) {
+		printf("profile %d: %s%s\n  %s\n",
+				i, info->profiles[i].name,
+				strcmp(info->profiles[i].name, active_profile) == 0 ? " (active)" : "",
+				info->profiles[i].description);
+	}
+}
+
+static int list_profiles(struct pulseaudio_t *pulse, struct io_t *device) {
+	pa_operation *op;
+
+	op = pa_context_get_card_info_by_index(pulse->cxt, device->idx, pa_card_info_cb, pulse);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+
+	return 0;
+}
+
+static int set_profile(struct pulseaudio_t *pulse, struct io_t *device, const char *profile) {
+	int success = 0;
+	pa_operation *op;
+
+	op = pa_context_set_card_profile_by_index(pulse->cxt, device->idx, profile, success_cb, &success);
+	pulse_async_wait(pulse, op);
+	pa_operation_unref(op);
+
+	return !success;
+}
+
 static int find_source(struct pulseaudio_t *pulse, struct io_t **list, const char *name, enum mode mode)
 {
 	long id;
@@ -735,6 +776,8 @@ static void __attribute__((__noreturn__)) usage(FILE *out)
 	fputs("\nDevice Commands:\n"
 	      "  defaults               list default devices (default command)\n"
 	      "  set-default DEVICE_ID  set default device by ID\n"
+	      "  list-profiles          list available device profiles\n"
+	      "  set-profile PROFILE    set profile for device\n"
 
 	      "\nApplication Commands:\n"
 	      "  move APP_ID DEVICE_ID  move application stream by ID to device ID\n"
@@ -754,7 +797,7 @@ static enum action string_to_verb(const char *string)
 	return i;
 }
 
-static int do_verb(struct pulseaudio_t *pulse, enum action verb, struct arg_t *arg)
+static int do_verb(struct pulseaudio_t *pulse, enum action verb, struct arg_t *arg, char **argv)
 {
 	struct io_t *device = arg->devices;
 	struct io_t *target = arg->target;
@@ -798,6 +841,10 @@ static int do_verb(struct pulseaudio_t *pulse, enum action verb, struct arg_t *a
 		return kill_client(pulse, device);
 	case ACTION_SETDEFAULT:
 		return set_default(pulse, device);
+	case ACTION_GETPROFILE:
+		return list_profiles(pulse, device);
+	case ACTION_SETPROFILE:
+		return set_profile(pulse, device, argv[0]);
 	default:
 		errx(EXIT_FAILURE, "internal error: unhandled verb id %d\n", verb);
 	}
@@ -949,6 +996,12 @@ int main(int argc, char *argv[])
 		rc = get_device(&pulse, argv[optind], &arg.devices, &run);
 		if (rc)
 			goto done;
+		break;
+	case ACTION_SETPROFILE:
+	case ACTION_GETPROFILE:
+		rc = get_device(&pulse, id, &arg.devices, &run);
+		if (rc)
+			goto done;
 	default:
 		break;
 	}
@@ -960,7 +1013,7 @@ int main(int argc, char *argv[])
 			goto done;
 	}
 
-	rc = do_verb(&pulse, verb, &arg);
+	rc = do_verb(&pulse, verb, &arg, &argv[optind]);
 
 done:
 	/* shut down */

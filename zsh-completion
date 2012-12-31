@@ -1,0 +1,123 @@
+#compdef ponymix
+
+_common_command(){
+    local -a commands
+    _commands=(
+        'list:list available devices'
+        'get-volume:get volume for device'
+        'set-volume:set volume for device:integer'
+        'get-balance:get balance for device'
+        'set-balance:set balance for device:integer'
+        'adj-balance:increase or decrease balance for device:integer'
+        'increase:increase volume:integer'
+        'decrease:decrease volume:integer'
+        'mute:mute device'
+        'unmute:unmute device'
+        'toggle:toggle mute'
+        'is-muted:check if muted'
+    )
+    if (( CURRENT == 1 )); then
+        _describe "common commands" _commands;
+    else
+        local curcontext="$curcontext"
+
+        cmd="${${_commands[(r)$words[1]:*]%%:*}}"
+
+        if (( $#cmd )) && [[ "$cmd" == set-* || "$cmd" == adj-* ]]; then
+            _message "number for $cmd"
+        else
+            _message "no more options"
+        fi
+    fi
+}
+
+for _command in set-default sinks; do 
+    _$_command(){
+        local -a _sinks
+        _sinks=( ${${${(M)${(f)"$(_call_program sinks "$service list")"}#sink*\:}%:}##* } )
+        _describe "sinks" _sinks
+    }
+done
+
+_sources(){
+    local -a sources 
+    sources=( ${${${(M)${(f)"$(_call_program sources "$service list")"}#source*\:}%:}##* } )
+    compadd $sources
+}
+
+_app_id(){
+    local -a _app_ids
+    _app_id=( ${(u)${${${(M)${(f)"$(pactl list)"}:#*application.name*}%\"}##*\"}} )
+}
+
+_move(){
+    if (( CURRENT == 2 )); then
+        local -a _app_ids
+        _app_ids=( ${(u)${${${(M)${(f)"$(pactl list)"}:#*application.name*}%\"}##*\"}} )
+        _describe "application ids" _app_ids
+    elif (( CURRENT == 3 )); then
+        _sinks
+    else
+        _message "no more options"
+    fi
+}
+
+_kill(){
+    if (( CURRENT == 2 )); then
+        local -a _app_ids
+        _app_ids=( ${(u)${${${(M)${(f)"$(pactl list)"}:#*application.name*}%\"}##*\"}#pactl} )
+        _describe "application ids" _app_ids
+    else
+        _message "no more options"
+    fi
+
+}
+
+_device_command(){
+    local -a _commands
+    _commands=(
+        'defaults:list default devices'
+        'set-default:set default device by ID'
+    )
+    
+    if (( CURRENT == 1 )) ; then
+        _describe "device commands" _commands;
+    else
+        local curcontext="$curcontext"
+        cmd="${${_commands[(r)$words[1]:*]%%:*}}"
+        if (( $#cmd )) && (( $+functions[_$cmd] )); then
+            _call_function ponies _$cmd
+        else
+            _message "no more options"
+        fi
+    fi
+}
+
+
+_app_command(){
+    local -a _commands
+    _commands=(
+        'move:move application stream by ID to device ID'
+        'kill:kill an application stream by ID'
+    )
+    if (( CURRENT == 1 )) ; then
+        _describe "application commands" _commands;
+    else
+        local curcontext="$curcontext"
+        cmd="${${_commands[(r)$words[1]:*]%%:*}}"
+        if (( $#cmd )) && (( $+functions[_$cmd] )); then
+            _call_function ponies _$cmd
+        else
+            _message "no more options"
+        fi
+    fi
+}
+_arguments \
+    {-h,--help}'[display this help and exit]' \
+    {-d,--device}'[set device mode (default)]:*::device:_device_command' \
+    {-a,--app}'[set application mode]:*::applications:_app_command' \
+    {-o,--sink=,--output=}'[control a sink other than the default]:sinks:_sinks' \
+    {-i,--source=,--input=}'[control a source]:sources:_sources' \
+    '*::commands:_common_command'
+
+#vim: set ft=zsh sw=4 ts=4 noet

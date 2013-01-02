@@ -86,7 +86,7 @@ static enum Action string_to_action(const char* str) {
   try {
     return actionmap.at(str);
   } catch(std::out_of_range) {
-    errx(1, "error: Invalid option specified: %s", str);
+    errx(1, "error: Invalid action specified: %s", str);
   }
 }
 
@@ -130,12 +130,13 @@ static Device* string_to_device_or_die(Pulse& ponymix,
 static void Print(const Device& device) {
   printf("%s %d: %s\n"
          "  %s\n"
-         "  Avg. Volume: %d%%\n",
+         "  Avg. Volume: %d%%%s\n",
          type_to_string(device.Type()),
          device.Index(),
          device.Name().c_str(),
          device.Desc().c_str(),
-         device.Volume());
+         device.Volume(),
+         device.Muted() ? " [muted]" : "");
 }
 
 static void Print(const Card& card) {

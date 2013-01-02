@@ -383,23 +383,23 @@ static int Move(Pulse& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: move requires 1 argument");
 
   // this assignment is a lie. stfu g++
-  enum DeviceType target_type = opt_devtype;
+  enum DeviceType target_devtype = opt_devtype;
   switch (opt_devtype) {
   case DEVTYPE_SOURCE:
     opt_devtype = DEVTYPE_SOURCE_OUTPUT;
   case DEVTYPE_SOURCE_OUTPUT:
-    target_type = DEVTYPE_SOURCE;
+    target_devtype = DEVTYPE_SOURCE;
     break;
   case DEVTYPE_SINK:
     opt_devtype = DEVTYPE_SINK_INPUT;
   case DEVTYPE_SINK_INPUT:
-    target_type = DEVTYPE_SINK;
+    target_devtype = DEVTYPE_SINK;
     break;
   }
 
   // Does this even work?
   auto source = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-  auto target = string_to_device_or_die(ponymix, argv[0], target_type);
+  auto target = string_to_device_or_die(ponymix, argv[0], target_devtype);
 
   return !ponymix.Move(*source, *target);
 }
@@ -442,7 +442,13 @@ void usage() {
 
         " -c, --card CARD         target card (index or name)\n"
         " -d, --device DEVICE     target device (index or name)\n"
-        " -t, --devtype TYPE      device type\n", stdout);
+        " -t, --devtype TYPE      device type\n"
+        "     --source            alias to -t source\n"
+        "     --input             alais to -t source\n"
+        "     --sink              alias to -t sink\n"
+        "     --output            alias to -t sink\n"
+        "     --sink-input        alias to -t sink-input\n"
+        "     --source-output     alias to -t source-output\n", stdout);
 
   fputs("\nCommon Commands:\n"
         "  list                   list available devices\n"
@@ -477,10 +483,16 @@ void usage() {
 
 bool parse_options(int argc, char** argv) {
   static const struct option opts[] = {
-    { "card",   required_argument, 0, 'c' },
-    { "device", required_argument, 0, 'd' },
-    { "help",   no_argument,       0, 'h' },
-    { "type",   required_argument, 0, 't' },
+    { "card",           required_argument, 0, 'c' },
+    { "device",         required_argument, 0, 'd' },
+    { "help",           no_argument,       0, 'h' },
+    { "type",           required_argument, 0, 't' },
+    { "sink",           no_argument,       0, 0x100 },
+    { "output",         no_argument,       0, 0x101 },
+    { "source",         no_argument,       0, 0x102 },
+    { "input",          no_argument,       0, 0x103 },
+    { "sink-input",     no_argument,       0, 0x104 },
+    { "source-output",  no_argument,       0, 0x105 },
     { 0, 0, 0, 0 },
   };
 
@@ -501,6 +513,20 @@ bool parse_options(int argc, char** argv) {
       break;
     case 't':
       opt_devtype = string_to_devtype_or_die(optarg);
+      break;
+    case 0x100:
+    case 0x101:
+      opt_devtype = DEVTYPE_SINK;
+      break;
+    case 0x102:
+    case 0x103:
+      opt_devtype = DEVTYPE_SOURCE;
+      break;
+    case 0x104:
+      opt_devtype = DEVTYPE_SINK_INPUT;
+      break;
+    case 0x105:
+      opt_devtype = DEVTYPE_SOURCE_OUTPUT;
       break;
     default:
       return false;

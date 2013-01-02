@@ -382,9 +382,24 @@ static int SetProfile(Pulse& ponymix, int argc, char* argv[] _unused_) {
 static int Move(Pulse& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: move requires 1 argument");
 
+  // this assignment is a lie. stfu g++
+  enum DeviceType target_type = opt_devtype;
+  switch (opt_devtype) {
+  case DEVTYPE_SOURCE:
+    opt_devtype = DEVTYPE_SOURCE_OUTPUT;
+  case DEVTYPE_SOURCE_OUTPUT:
+    target_type = DEVTYPE_SOURCE;
+    break;
+  case DEVTYPE_SINK:
+    opt_devtype = DEVTYPE_SINK_INPUT;
+  case DEVTYPE_SINK_INPUT:
+    target_type = DEVTYPE_SINK;
+    break;
+  }
+
   // Does this even work?
   auto source = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-  auto target = string_to_device_or_die(ponymix, argv[0], opt_devtype);
+  auto target = string_to_device_or_die(ponymix, argv[0], target_type);
 
   return !ponymix.Move(*source, *target);
 }

@@ -493,7 +493,7 @@ Card::Card(const pa_card_info* info) :
 Device::Device(const pa_sink_info* info) :
     type_(DEVTYPE_SINK),
     index_(info->index),
-    name_(info->name),
+    name_(!info->name.empty() ? info->name : ""),
     desc_(info->description),
     mute_(info->mute) {
   update_volume(info->volume);
@@ -508,7 +508,7 @@ Device::Device(const pa_sink_info* info) :
 Device::Device(const pa_source_info* info) :
     type_(DEVTYPE_SOURCE),
     index_(info->index),
-    name_(info->name),
+    name_(!info->name.empty() ? info->name : ""),
     desc_(info->description),
     mute_(info->mute) {
   update_volume(info->volume);
@@ -523,12 +523,15 @@ Device::Device(const pa_source_info* info) :
 Device::Device(const pa_sink_input_info* info) :
     type_(DEVTYPE_SINK_INPUT),
     index_(info->index),
-    name_(info->name),
-    desc_(pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME)),
+    name_(!info->name.empty() ? info->name : ""),
     mute_(info->mute) {
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
+
+  const char *desc = pa_proplist_gets(info->proplist,
+                                      PA_PROP_APPLICATION_NAME);
+  if (desc) desc_ = desc;
 
   ops_.SetVolume = pa_context_set_sink_input_volume;
   ops_.Mute = pa_context_set_sink_input_mute;
@@ -539,12 +542,15 @@ Device::Device(const pa_sink_input_info* info) :
 Device::Device(const pa_source_output_info* info) :
     type_(DEVTYPE_SOURCE_OUTPUT),
     index_(info->index),
-    name_(info->name),
-    desc_(pa_proplist_gets(info->proplist, PA_PROP_APPLICATION_NAME)),
+    name_(!info->name.empty() ? info->name : ""),
     mute_(info->mute) {
   update_volume(info->volume);
   volume_percent_ = volume_as_percent(&volume_);
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
+
+  const char *desc = pa_proplist_gets(info->proplist,
+                                      PA_PROP_APPLICATION_NAME);
+  if (desc) desc_ = desc;
 
   ops_.SetVolume = pa_context_set_source_output_volume;
   ops_.Mute = pa_context_set_source_output_mute;

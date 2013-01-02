@@ -55,7 +55,7 @@ class Device {
   enum DeviceType Type() const { return type_; }
 
  private:
-  friend class Pulse;
+  friend class PulseClient;
 
   void update_volume(const pa_cvolume& newvol);
 
@@ -83,7 +83,7 @@ class Card {
   const Profile& ActiveProfile() const { return active_profile_; }
 
  private:
-  friend class Pulse;
+  friend class PulseClient;
 
   uint32_t index_;
   string name_;
@@ -110,10 +110,10 @@ struct Range {
   T max;
 };
 
-class Pulse {
+class PulseClient {
  public:
-  Pulse(string client_name);
-  ~Pulse();
+  PulseClient(string client_name);
+  ~PulseClient();
 
   // Populates all known devices and cards. Any currently known
   // devices and cards are cleared before the new data is stored.

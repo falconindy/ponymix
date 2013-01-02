@@ -102,7 +102,7 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
   }
 }
 
-static Device* string_to_device(Pulse& ponymix, string arg, enum DeviceType type) {
+static Device* string_to_device(PulseClient& ponymix, string arg, enum DeviceType type) {
   switch (type) {
   case DEVTYPE_SINK:
     return ponymix.GetSink(arg);
@@ -117,7 +117,7 @@ static Device* string_to_device(Pulse& ponymix, string arg, enum DeviceType type
   }
 }
 
-static Device* string_to_device_or_die(Pulse& ponymix,
+static Device* string_to_device_or_die(PulseClient& ponymix,
                                        string arg,
                                        enum DeviceType type) {
   Device* device = string_to_device(ponymix, arg, type);
@@ -146,14 +146,14 @@ static void Print(const Profile& profile, bool active) {
          profile.name.c_str(), profile.desc.c_str(), active ? " [active]" : "");
 }
 
-static int ShowDefaults(Pulse& ponymix, int, char*[]) {
+static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
   const auto& info = ponymix.GetDefaults();
   Print(*ponymix.GetSink(info.sink));
   Print(*ponymix.GetSource(info.source));
   return 0;
 }
 
-static int List(Pulse& ponymix, int argc, char*[]) {
+static int List(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list requires 0 arguments");
 
   const auto& sinks = ponymix.GetSinks();
@@ -171,7 +171,7 @@ static int List(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int ListCards(Pulse& ponymix, int argc, char*[]) {
+static int ListCards(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list-cards requires 0 arguments");
 
   const auto& cards = ponymix.GetCards();
@@ -180,7 +180,7 @@ static int ListCards(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int ListProfiles(Pulse& ponymix, int argc, char*[]) {
+static int ListProfiles(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list-profiles requires 0 arguments");
 
   // TODO: figure out how to get a list of cards?
@@ -193,7 +193,7 @@ static int ListProfiles(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int GetVolume(Pulse& ponymix, int argc, char*[]) {
+static int GetVolume(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-volume requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -201,7 +201,7 @@ static int GetVolume(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int SetVolume(Pulse& ponymix, int argc, char* argv[]) {
+static int SetVolume(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: set-volume requires exactly 1 argument");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -220,7 +220,7 @@ static int SetVolume(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int GetBalance(Pulse& ponymix, int argc, char*[]) {
+static int GetBalance(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-balance requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -228,7 +228,7 @@ static int GetBalance(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int SetBalance(Pulse& ponymix, int argc, char* argv[]) {
+static int SetBalance(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: set-balance requires exactly 1 argument");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -247,7 +247,7 @@ static int SetBalance(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int AdjBalance(Pulse& ponymix, int argc, char* argv[]) {
+static int AdjBalance(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: adj-balance requires exactly 1 argument");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -266,7 +266,7 @@ static int AdjBalance(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int IncreaseVolume(Pulse& ponymix, int argc, char* argv[]) {
+static int IncreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: increase requires exactly 1 argument");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -285,7 +285,7 @@ static int IncreaseVolume(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int DecreaseVolume(Pulse& ponymix, int argc, char* argv[]) {
+static int DecreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: decrease requires exactly 1 argument");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -304,7 +304,7 @@ static int DecreaseVolume(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int Mute(Pulse& ponymix, int argc, char*[]) {
+static int Mute(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: mute requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -316,7 +316,7 @@ static int Mute(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int Unmute(Pulse& ponymix, int argc, char*[]) {
+static int Unmute(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: unmute requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -328,7 +328,7 @@ static int Unmute(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int ToggleMute(Pulse& ponymix, int argc, char*[]) {
+static int ToggleMute(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: toggle requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -340,14 +340,14 @@ static int ToggleMute(Pulse& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int IsMuted(Pulse& ponymix, int argc, char*[]) {
+static int IsMuted(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: is-muted requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
   return !ponymix.IsMuted(*device);
 }
 
-static int SetDefault(Pulse& ponymix, int argc, char*[]) {
+static int SetDefault(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -355,7 +355,7 @@ static int SetDefault(Pulse& ponymix, int argc, char*[]) {
   return !ponymix.SetDefault(*device);
 }
 
-static int GetProfile(Pulse& ponymix, int argc, char*[]) {
+static int GetProfile(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-profile requires 0 arguments");
 
   auto card = ponymix.GetCard(opt_card);
@@ -366,7 +366,7 @@ static int GetProfile(Pulse& ponymix, int argc, char*[]) {
   return true;
 }
 
-static int SetProfile(Pulse& ponymix, int argc, char* argv[]) {
+static int SetProfile(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: set-profile requires 1 argument");
 
   auto card = ponymix.GetCard(opt_card);
@@ -375,7 +375,7 @@ static int SetProfile(Pulse& ponymix, int argc, char* argv[]) {
   return !ponymix.SetProfile(*card, argv[0]);
 }
 
-static int Move(Pulse& ponymix, int argc, char* argv[]) {
+static int Move(PulseClient& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: move requires 1 argument");
 
   // this assignment is a lie. stfu g++
@@ -400,7 +400,7 @@ static int Move(Pulse& ponymix, int argc, char* argv[]) {
   return !ponymix.Move(*source, *target);
 }
 
-static int Kill(Pulse& ponymix, int argc, char*[]) {
+static int Kill(PulseClient& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -408,7 +408,7 @@ static int Kill(Pulse& ponymix, int argc, char*[]) {
   return !ponymix.Kill(*device);
 }
 
-static int (*fn[])(Pulse& ponymix, int argc, char* argv[]) = {
+static int (*fn[])(PulseClient& ponymix, int argc, char* argv[]) = {
   [ACTION_DEFAULTS] = ShowDefaults,
   [ACTION_LIST] = List,
   [ACTION_LISTCARDS] = ListCards,
@@ -533,7 +533,7 @@ bool parse_options(int argc, char** argv) {
 }
 
 int main(int argc, char* argv[]) {
-  Pulse ponymix("ponymix");
+  PulseClient ponymix("ponymix");
   ponymix.Populate();
 
   // defaults

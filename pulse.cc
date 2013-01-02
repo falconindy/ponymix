@@ -95,7 +95,7 @@ static int xstrtol(const char *str, long *out) {
 
 }  // anonymous namespace
 
-Pulse::Pulse(string client_name) :
+PulseClient::PulseClient(string client_name) :
     client_name_(client_name),
     volume_range_(0, 150),
     balance_range_(-100, 100) {
@@ -129,40 +129,40 @@ Pulse::Pulse(string client_name) :
 //
 // Pulse Client
 //
-Pulse::~Pulse() {
+PulseClient::~PulseClient() {
   pa_context_unref(context_);
   pa_mainloop_free(mainloop_);
 }
 
-void Pulse::Populate() {
+void PulseClient::Populate() {
   populate_server_info();
   populate_sinks();
   populate_sources();
   populate_cards();
 }
 
-Card* Pulse::GetCard(const uint32_t& index) {
+Card* PulseClient::GetCard(const uint32_t& index) {
   for (Card& card : cards_) {
     if (card.index_ == index) return &card;
   }
   return nullptr;
 }
 
-Card* Pulse::GetCard(const string& name) {
+Card* PulseClient::GetCard(const string& name) {
   for (Card& card : cards_) {
     if (card.name_ == name) return &card;
   }
   return nullptr;
 }
 
-Device* Pulse::get_device(vector<Device>& devices, const uint32_t& index) {
+Device* PulseClient::get_device(vector<Device>& devices, const uint32_t& index) {
   for (Device& device : devices) {
     if (device.index_ == index) return &device;
   }
   return nullptr;
 }
 
-Device* Pulse::get_device(vector<Device>& devices, const string& name) {
+Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
   long val;
   if (xstrtol(name.c_str(), &val) == 0) return get_device(devices, val);
 
@@ -172,46 +172,46 @@ Device* Pulse::get_device(vector<Device>& devices, const string& name) {
   return nullptr;
 }
 
-Device* Pulse::GetSink(const uint32_t& index) {
+Device* PulseClient::GetSink(const uint32_t& index) {
   return get_device(sinks_, index);
 }
 
-Device* Pulse::GetSink(const string& name) {
+Device* PulseClient::GetSink(const string& name) {
   return get_device(sinks_, name);
 }
 
-Device* Pulse::GetSource(const uint32_t& index) {
+Device* PulseClient::GetSource(const uint32_t& index) {
   return get_device(sources_, index);
 }
 
-Device* Pulse::GetSource(const string& name) {
+Device* PulseClient::GetSource(const string& name) {
   return get_device(sources_, name);
 }
 
-Device* Pulse::GetSinkInput(const uint32_t& index) {
+Device* PulseClient::GetSinkInput(const uint32_t& index) {
   return get_device(sink_inputs_, index);
 }
 
-Device* Pulse::GetSinkInput(const string& name) {
+Device* PulseClient::GetSinkInput(const string& name) {
   return get_device(sink_inputs_, name);
 }
 
-Device* Pulse::GetSourceOutput(const uint32_t& index) {
+Device* PulseClient::GetSourceOutput(const uint32_t& index) {
   return get_device(source_outputs_, index);
 }
 
-Device* Pulse::GetSourceOutput(const string& name) {
+Device* PulseClient::GetSourceOutput(const string& name) {
   return get_device(source_outputs_, name);
 }
 
-void Pulse::mainloop_iterate(pa_operation* op) {
+void PulseClient::mainloop_iterate(pa_operation* op) {
   int r;
   while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
     pa_mainloop_iterate(mainloop_, 1, &r);
   }
 }
 
-void Pulse::populate_cards() {
+void PulseClient::populate_cards() {
   cards_.clear();
   pa_operation* op = pa_context_get_card_info_list(context_,
                                                    card_info_cb,
@@ -220,7 +220,7 @@ void Pulse::populate_cards() {
   pa_operation_unref(op);
 }
 
-void Pulse::populate_server_info() {
+void PulseClient::populate_server_info() {
   pa_operation* op = pa_context_get_server_info(context_,
                                                 server_info_cb,
                                                 &defaults_);
@@ -228,7 +228,7 @@ void Pulse::populate_server_info() {
   pa_operation_unref(op);
 }
 
-void Pulse::populate_sinks() {
+void PulseClient::populate_sinks() {
   sinks_.clear();
   pa_operation* op = pa_context_get_sink_info_list(context_,
                                                    device_info_cb,
@@ -244,7 +244,7 @@ void Pulse::populate_sinks() {
   pa_operation_unref(op);
 }
 
-void Pulse::populate_sources() {
+void PulseClient::populate_sources() {
   sources_.clear();
   pa_operation* op = pa_context_get_source_info_list(context_,
                                                      device_info_cb,
@@ -260,7 +260,7 @@ void Pulse::populate_sources() {
   pa_operation_unref(op);
 }
 
-bool Pulse::SetMute(Device& device, bool mute) {
+bool PulseClient::SetMute(Device& device, bool mute) {
   int success;
 
   if (device.ops_.Mute == nullptr) {
@@ -281,7 +281,7 @@ bool Pulse::SetMute(Device& device, bool mute) {
   return success;
 }
 
-bool Pulse::SetVolume(Device& device, long volume) {
+bool PulseClient::SetVolume(Device& device, long volume) {
   int success;
 
   if (device.ops_.SetVolume == nullptr) {
@@ -303,17 +303,17 @@ bool Pulse::SetVolume(Device& device, long volume) {
   return success;
 }
 
-bool Pulse::IncreaseVolume(Device& device, long increment) {
+bool PulseClient::IncreaseVolume(Device& device, long increment) {
   return SetVolume(device,
                    volume_range_.clamp(device.volume_percent_ + increment));
 }
 
-bool Pulse::DecreaseVolume(Device& device, long increment) {
+bool PulseClient::DecreaseVolume(Device& device, long increment) {
   return SetVolume(device,
                    volume_range_.clamp(device.volume_percent_ - increment));
 }
 
-bool Pulse::SetBalance(Device& device, long balance) {
+bool PulseClient::SetBalance(Device& device, long balance) {
   int success;
 
   if (device.ops_.SetVolume == nullptr) {
@@ -337,25 +337,25 @@ bool Pulse::SetBalance(Device& device, long balance) {
   return success;
 }
 
-bool Pulse::IncreaseBalance(Device& device, long increment) {
+bool PulseClient::IncreaseBalance(Device& device, long increment) {
   return SetBalance(device,
                     balance_range_.clamp(device.balance_ + increment));
 }
 
-bool Pulse::DecreaseBalance(Device& device, long increment) {
+bool PulseClient::DecreaseBalance(Device& device, long increment) {
   return SetBalance(device,
                     balance_range_.clamp(device.balance_ - increment));
 }
 
-int Pulse::GetVolume(const Device& device) const {
+int PulseClient::GetVolume(const Device& device) const {
   return device.Volume();
 }
 
-int Pulse::GetBalance(const Device& device) const {
+int PulseClient::GetBalance(const Device& device) const {
   return device.Balance();
 }
 
-bool Pulse::SetProfile(Card& card, const string& profile) {
+bool PulseClient::SetProfile(Card& card, const string& profile) {
   int success;
   pa_operation* op =
     pa_context_set_card_profile_by_index(context_,
@@ -379,7 +379,7 @@ bool Pulse::SetProfile(Card& card, const string& profile) {
   return success;
 }
 
-bool Pulse::Move(Device& source, Device& dest) {
+bool PulseClient::Move(Device& source, Device& dest) {
   int success;
 
   if (source.ops_.Move == nullptr) {
@@ -398,7 +398,7 @@ bool Pulse::Move(Device& source, Device& dest) {
   return success;
 }
 
-bool Pulse::Kill(Device& device) {
+bool PulseClient::Kill(Device& device) {
   int success;
 
   if (device.ops_.Kill == nullptr) {
@@ -418,7 +418,7 @@ bool Pulse::Kill(Device& device) {
   return success;
 }
 
-bool Pulse::SetDefault(Device& device) {
+bool PulseClient::SetDefault(Device& device) {
   int success;
 
   if (device.ops_.SetDefault == nullptr) {
@@ -450,7 +450,7 @@ bool Pulse::SetDefault(Device& device) {
   return success;
 }
 
-void Pulse::remove_device(Device& device) {
+void PulseClient::remove_device(Device& device) {
   vector<Device>* devlist;
 
   switch (device.type_) {

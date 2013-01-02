@@ -10,6 +10,7 @@
 // C++
 #include <string>
 #include <algorithm>
+#include <stdexcept>
 
 // External
 #include <pulse/pulseaudio.h>
@@ -155,6 +156,13 @@ Card* PulseClient::GetCard(const string& name) {
   return nullptr;
 }
 
+Card* PulseClient::GetCard(const Device& device) {
+  for (Card& card : cards_) {
+    if (device.card_idx_ == card.index_) return &card;
+  }
+  return nullptr;
+}
+
 Device* PulseClient::get_device(vector<Device>& devices, const uint32_t& index) {
   for (Device& device : devices) {
     if (device.index_ == index) return &device;
@@ -170,6 +178,48 @@ Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
     if (device.name_ == name) return &device;
   }
   return nullptr;
+}
+
+Device* PulseClient::GetDevice(const uint32_t& index, enum DeviceType type) {
+  switch (type) {
+    case DEVTYPE_SINK:
+      return GetSink(index);
+    case DEVTYPE_SOURCE:
+      return GetSource(index);
+    case DEVTYPE_SINK_INPUT:
+      return GetSinkInput(index);
+    case DEVTYPE_SOURCE_OUTPUT:
+      return GetSourceOutput(index);
+  }
+  throw std::runtime_error("Impossible DeviceType encountered in GetDevice");
+}
+
+Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
+  switch (type) {
+    case DEVTYPE_SINK:
+      return GetSink(name);
+    case DEVTYPE_SOURCE:
+      return GetSource(name);
+    case DEVTYPE_SINK_INPUT:
+      return GetSinkInput(name);
+    case DEVTYPE_SOURCE_OUTPUT:
+      return GetSourceOutput(name);
+  }
+  throw std::runtime_error("Impossible DeviceType encountered in GetDevice");
+}
+
+const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
+  switch (type) {
+    case DEVTYPE_SINK:
+      return GetSinks();
+    case DEVTYPE_SOURCE:
+      return GetSources();
+    case DEVTYPE_SINK_INPUT:
+      return GetSinkInputs();
+    case DEVTYPE_SOURCE_OUTPUT:
+      return GetSourceOutputs();
+  }
+  throw std::runtime_error("Impossible DeviceType encountered in GetDevices");
 }
 
 Device* PulseClient::GetSink(const uint32_t& index) {
@@ -495,7 +545,8 @@ Device::Device(const pa_sink_info* info) :
     index_(info->index),
     name_(info->name ? info->name : ""),
     desc_(info->description),
-    mute_(info->mute) {
+    mute_(info->mute),
+    card_idx_(info->card) {
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
@@ -510,7 +561,8 @@ Device::Device(const pa_source_info* info) :
     index_(info->index),
     name_(info->name ? info->name : ""),
     desc_(info->description),
-    mute_(info->mute) {
+    mute_(info->mute),
+    card_idx_(info->card) {
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
@@ -524,7 +576,8 @@ Device::Device(const pa_sink_input_info* info) :
     type_(DEVTYPE_SINK_INPUT),
     index_(info->index),
     name_(info->name ? info->name : ""),
-    mute_(info->mute) {
+    mute_(info->mute),
+    card_idx_(-1) {
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
@@ -543,7 +596,8 @@ Device::Device(const pa_source_output_info* info) :
     type_(DEVTYPE_SOURCE_OUTPUT),
     index_(info->index),
     name_(info->name ? info->name : ""),
-    mute_(info->mute) {
+    mute_(info->mute),
+    card_idx_(-1) {
   update_volume(info->volume);
   volume_percent_ = volume_as_percent(&volume_);
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;

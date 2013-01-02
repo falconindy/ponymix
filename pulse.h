@@ -68,6 +68,7 @@ class Device {
   pa_channel_map channels_;
   int mute_;
   int balance_;
+  uint32_t card_idx_;
   Operations ops_;
 };
 
@@ -96,6 +97,17 @@ class Card {
 struct ServerInfo {
   string sink;
   string source;
+
+  const string GetDefault(enum DeviceType type) {
+    switch (type) {
+    case DEVTYPE_SINK:
+      return sink;
+    case DEVTYPE_SOURCE:
+      return source;
+    default:
+      return "";
+    }
+  }
 };
 
 template<typename T>
@@ -127,6 +139,11 @@ class PulseClient {
   // devices and cards are cleared before the new data is stored.
   void Populate();
 
+  // Get a device by index or name and type, or all devices by type.
+  Device* GetDevice(const uint32_t& index, enum DeviceType type);
+  Device* GetDevice(const string& name, enum DeviceType type);
+  const vector<Device>& GetDevices(enum DeviceType type) const;
+
   // Get a sink by index or name, or all sinks.
   Device* GetSink(const uint32_t& index);
   Device* GetSink(const string& name);
@@ -147,9 +164,11 @@ class PulseClient {
   Device* GetSourceOutput(const string& name);
   const vector<Device>& GetSourceOutputs() const { return source_outputs_; }
 
-  // Get a card by index or name, or all cards.
+  // Get a card by index or name, all cards, or get the card which
+  // a sink is attached to.
   Card* GetCard(const uint32_t& index);
   Card* GetCard(const string& name);
+  Card* GetCard(const Device& device);
   const vector<Card>& GetCards() const { return cards_; }
 
   // Get or set the volume of a device.

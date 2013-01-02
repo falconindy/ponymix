@@ -146,7 +146,8 @@ static int ListCards(PulseClient& ponymix, int, char*[]) {
 }
 
 static int ListProfiles(PulseClient& ponymix, int, char*[]) {
-  // TODO: Is there any sense of a "default card" ?
+  if (opt_card == nullptr) errx(1, "error: no card selected");
+
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
@@ -500,14 +501,23 @@ int main(int argc, char* argv[]) {
   ponymix.Populate();
 
   // defaults
+  ServerInfo defaults = ponymix.GetDefaults();
   opt_action = "defaults";
   opt_devtype = DEVTYPE_SINK;
-  opt_device = ponymix.GetDefaults().sink.c_str();
-  opt_card = ponymix.GetCards()[0].Name().c_str();
+  opt_device = defaults.sink.c_str();
 
   if (!parse_options(argc, argv)) return 1;
   argc -= optind;
   argv += optind;
+
+  // cards are tricky... find the one that belongs to the chosen sink.
+  if (opt_card == nullptr) {
+    const Device* device = ponymix.GetDevice(opt_device, opt_devtype);
+    if (device) {
+      const Card* card = ponymix.GetCard(*device);
+      if (card) opt_card = card->Name().c_str();
+    }
+  }
 
   return CommandDispatch(ponymix, argc, argv);
 }

@@ -1,13 +1,19 @@
 CXX = g++ -std=c++11
 
-base_CFLAGS = -Wall -Wextra -pedantic -O2 -g
+base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g
 base_LIBS = -lm
 
-libpulse_CFLAGS = $(shell pkg-config --cflags libpulse)
+libpulse_CXXFLAGS = $(shell pkg-config --cflags libpulse)
 libpulse_LIBS = $(shell pkg-config --libs libpulse)
 
-CXXFLAGS := $(base_CFLAGS) $(libpulse_CFLAGS) $(CXXFLAGS)
-LDLIBS := $(base_LIBS) $(libpulse_LIBS)
+CXXFLAGS := \
+	$(base_CXXFLAGS) \
+	$(libpulse_CXXFLAGS) \
+	$(CXXFLAGS)
+
+LDLIBS := \
+	$(base_LIBS) \
+	$(libpulse_LIBS)
 
 all: ponymix
 

@@ -553,6 +553,8 @@ Device::Device(const pa_sink_info* info) :
 
   ops_.SetVolume = pa_context_set_sink_volume_by_index;
   ops_.Mute = pa_context_set_sink_mute_by_index;
+  ops_.Kill = nullptr;
+  ops_.Move = nullptr;
   ops_.SetDefault = pa_context_set_default_sink;
 }
 
@@ -569,6 +571,8 @@ Device::Device(const pa_source_info* info) :
 
   ops_.SetVolume = pa_context_set_source_volume_by_index;
   ops_.Mute = pa_context_set_source_mute_by_index;
+  ops_.Kill = nullptr;
+  ops_.Move = nullptr;
   ops_.SetDefault = pa_context_set_default_source;
 }
 
@@ -590,6 +594,7 @@ Device::Device(const pa_sink_input_info* info) :
   ops_.Mute = pa_context_set_sink_input_mute;
   ops_.Kill = pa_context_kill_sink_input;
   ops_.Move = pa_context_move_sink_input_by_index;
+  ops_.SetDefault = nullptr;
 }
 
 Device::Device(const pa_source_output_info* info) :
@@ -610,6 +615,7 @@ Device::Device(const pa_source_output_info* info) :
   ops_.Mute = pa_context_set_source_output_mute;
   ops_.Kill = pa_context_kill_source_output;
   ops_.Move = pa_context_move_source_output_by_index;
+  ops_.SetDefault = nullptr;
 }
 
 void Device::update_volume(const pa_cvolume& newvol) {

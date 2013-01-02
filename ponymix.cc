@@ -71,25 +71,10 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
   }
 }
 
-static Device* string_to_device(PulseClient& ponymix, string arg, enum DeviceType type) {
-  switch (type) {
-  case DEVTYPE_SINK:
-    return ponymix.GetSink(arg);
-  case DEVTYPE_SOURCE:
-    return ponymix.GetSource(arg);
-  case DEVTYPE_SOURCE_OUTPUT:
-    return ponymix.GetSourceOutput(arg);
-  case DEVTYPE_SINK_INPUT:
-    return ponymix.GetSinkInput(arg);
-  default:
-  return nullptr;
-  }
-}
-
 static Device* string_to_device_or_die(PulseClient& ponymix,
                                        string arg,
                                        enum DeviceType type) {
-  Device* device = string_to_device(ponymix, arg, type);
+  Device* device = ponymix.GetDevice(arg, type);
   if (device == nullptr) errx(1, "no match found for device: %s", arg.c_str());
   return device;
 }
@@ -169,7 +154,7 @@ static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
   long volume;
   try {
     volume = std::stol(argv[0]);
-  } catch (std::invalid_argument _) {
+  } catch (std::invalid_argument) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -192,7 +177,7 @@ static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
   long balance;
   try {
     balance = std::stol(argv[0]);
-  } catch (std::invalid_argument _) {
+  } catch (std::invalid_argument) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -209,7 +194,7 @@ static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
   long balance;
   try {
     balance = std::stol(argv[0]);
-  } catch (std::invalid_argument _) {
+  } catch (std::invalid_argument) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -226,7 +211,7 @@ static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
   long delta;
   try {
     delta = std::stol(argv[0]);
-  } catch (std::invalid_argument _) {
+  } catch (std::invalid_argument) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -243,7 +228,7 @@ static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
   long delta;
   try {
     delta = std::stol(argv[0]);
-  } catch (std::invalid_argument _) {
+  } catch (std::invalid_argument) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 

@@ -7,8 +7,6 @@
 #include <map>
 #include <stdexcept>
 
-#define _unused_ __attribute__((unused))
-
 enum Action {
   ACTION_DEFAULTS,
   ACTION_LIST,
@@ -148,16 +146,14 @@ static void Print(const Profile& profile, bool active) {
          profile.name.c_str(), profile.desc.c_str(), active ? " [active]" : "");
 }
 
-static int ShowDefaults(Pulse& ponymix,
-                        int argc _unused_,
-                        char* argv[] _unused_) {
+static int ShowDefaults(Pulse& ponymix, int, char*[]) {
   const auto& info = ponymix.GetDefaults();
   Print(*ponymix.GetSink(info.sink));
   Print(*ponymix.GetSource(info.source));
   return 0;
 }
 
-static int List(Pulse& ponymix, int argc _unused_, char* argv[] _unused_) {
+static int List(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list requires 0 arguments");
 
   const auto& sinks = ponymix.GetSinks();
@@ -175,7 +171,7 @@ static int List(Pulse& ponymix, int argc _unused_, char* argv[] _unused_) {
   return 0;
 }
 
-static int ListCards(Pulse& ponymix, int argc _unused_, char* argv[] _unused_) {
+static int ListCards(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list-cards requires 0 arguments");
 
   const auto& cards = ponymix.GetCards();
@@ -184,7 +180,7 @@ static int ListCards(Pulse& ponymix, int argc _unused_, char* argv[] _unused_) {
   return 0;
 }
 
-static int ListProfiles(Pulse& ponymix, int argc _unused_, char* argv[] _unused_) {
+static int ListProfiles(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: list-profiles requires 0 arguments");
 
   // TODO: figure out how to get a list of cards?
@@ -197,7 +193,7 @@ static int ListProfiles(Pulse& ponymix, int argc _unused_, char* argv[] _unused_
   return 0;
 }
 
-static int GetVolume(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int GetVolume(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-volume requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -224,7 +220,7 @@ static int SetVolume(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int GetBalance(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int GetBalance(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-balance requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -308,7 +304,7 @@ static int DecreaseVolume(Pulse& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int Mute(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int Mute(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: mute requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -320,7 +316,7 @@ static int Mute(Pulse& ponymix, int argc, char* argv[] _unused_) {
   return 0;
 }
 
-static int Unmute(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int Unmute(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: unmute requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -332,7 +328,7 @@ static int Unmute(Pulse& ponymix, int argc, char* argv[] _unused_) {
   return 0;
 }
 
-static int ToggleMute(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int ToggleMute(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: toggle requires 0 arguments");
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -344,14 +340,14 @@ static int ToggleMute(Pulse& ponymix, int argc, char* argv[] _unused_) {
   return 0;
 }
 
-static int IsMuted(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int IsMuted(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: is-muted requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
   return !ponymix.IsMuted(*device);
 }
 
-static int SetDefault(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int SetDefault(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -359,7 +355,7 @@ static int SetDefault(Pulse& ponymix, int argc, char* argv[] _unused_) {
   return !ponymix.SetDefault(*device);
 }
 
-static int GetProfile(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int GetProfile(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: get-profile requires 0 arguments");
 
   auto card = ponymix.GetCard(opt_card);
@@ -370,7 +366,7 @@ static int GetProfile(Pulse& ponymix, int argc, char* argv[] _unused_) {
   return true;
 }
 
-static int SetProfile(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int SetProfile(Pulse& ponymix, int argc, char* argv[]) {
   if (argc != 1) errx(1, "error: set-profile requires 1 argument");
 
   auto card = ponymix.GetCard(opt_card);
@@ -404,7 +400,7 @@ static int Move(Pulse& ponymix, int argc, char* argv[]) {
   return !ponymix.Move(*source, *target);
 }
 
-static int Kill(Pulse& ponymix, int argc, char* argv[] _unused_) {
+static int Kill(Pulse& ponymix, int argc, char*[]) {
   if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
 
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);

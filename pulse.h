@@ -102,8 +102,16 @@ template<typename T>
 struct Range {
   Range(T min, T max) : min(min), max(max) {}
 
-  T clamp(T value) {
+  // Clamps a value to the stored range
+  T Clamp(T value) {
     return value < min ? min : (value > max ? max : value);
+  }
+
+  // Determine if the passed value is within the range. Returns 0
+  // on success, else -1 if lower than the minimum, and 1 if higher
+  // than the maximum.
+  int InRange(T value) const {
+    return value < min ? -1 : (value > max ? 1 : 0);
   }
 
   T min;

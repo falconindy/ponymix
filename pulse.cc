@@ -305,12 +305,12 @@ bool PulseClient::SetVolume(Device& device, long volume) {
 
 bool PulseClient::IncreaseVolume(Device& device, long increment) {
   return SetVolume(device,
-                   volume_range_.clamp(device.volume_percent_ + increment));
+                   volume_range_.Clamp(device.volume_percent_ + increment));
 }
 
 bool PulseClient::DecreaseVolume(Device& device, long increment) {
   return SetVolume(device,
-                   volume_range_.clamp(device.volume_percent_ - increment));
+                   volume_range_.Clamp(device.volume_percent_ - increment));
 }
 
 bool PulseClient::SetBalance(Device& device, long balance) {
@@ -339,12 +339,12 @@ bool PulseClient::SetBalance(Device& device, long balance) {
 
 bool PulseClient::IncreaseBalance(Device& device, long increment) {
   return SetBalance(device,
-                    balance_range_.clamp(device.balance_ + increment));
+                    balance_range_.Clamp(device.balance_ + increment));
 }
 
 bool PulseClient::DecreaseBalance(Device& device, long increment) {
   return SetBalance(device,
-                    balance_range_.clamp(device.balance_ - increment));
+                    balance_range_.Clamp(device.balance_ - increment));
 }
 
 int PulseClient::GetVolume(const Device& device) const {

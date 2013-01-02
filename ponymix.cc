@@ -31,15 +31,15 @@ enum Action {
   ACTION_INVALID,
 };
 
+struct Command {
+  int (*fn)(PulseClient&, int, char*[]);
+  Range<int> args;
+};
+
 static enum DeviceType opt_devtype;
-static enum Action opt_action;
+static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
-
-static const int kMinVolume = 0;
-static const int kMaxVolume = 150;
-static const int kMinBalance = -100;
-static const int kMaxBalance = 100;
 
 static const char* type_to_string(enum DeviceType t) {
   switch (t) {
@@ -54,38 +54,7 @@ static const char* type_to_string(enum DeviceType t) {
   }
 
   /* impossibiru! */
-  return NULL;
-}
-
-static enum Action string_to_action(const char* str) {
-  static std::map<string, enum Action> actionmap = {
-    { "defaults",       ACTION_DEFAULTS     },
-    { "list",           ACTION_LIST         },
-    { "list-cards",     ACTION_LISTCARDS    },
-    { "list-profiles",  ACTION_LISTPROFILES },
-    { "get-volume",     ACTION_GETVOL       },
-    { "set-volume",     ACTION_SETVOL       },
-    { "get-balance",    ACTION_GETBAL       },
-    { "set-balance",    ACTION_SETBAL       },
-    { "adj-balance",    ACTION_ADJBAL       },
-    { "increase",       ACTION_INCREASE     },
-    { "decrease",       ACTION_DECREASE     },
-    { "mute",           ACTION_MUTE         },
-    { "unmute",         ACTION_UNMUTE       },
-    { "toggle",         ACTION_TOGGLE       },
-    { "is-muted",       ACTION_ISMUTED      },
-    { "set-default",    ACTION_SETDEFAULT   },
-    { "get-profile",    ACTION_GETPROFILE   },
-    { "set-profile",    ACTION_SETPROFILE   },
-    { "move",           ACTION_MOVE         },
-    { "kill",           ACTION_KILL         }
-  };
-
-  try {
-    return actionmap.at(str);
-  } catch(std::out_of_range) {
-    errx(1, "error: Invalid action specified: %s", str);
-  }
+  throw std::out_of_range("device type out of range");
 }
 
 static enum DeviceType string_to_devtype_or_die(const char* str) {
@@ -153,9 +122,7 @@ static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
   return 0;
 }
 
-static int List(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: list requires 0 arguments");
-
+static int List(PulseClient& ponymix, int, char*[]) {
   const auto& sinks = ponymix.GetSinks();
   for (const auto& s : sinks) Print(s);
 
@@ -171,19 +138,15 @@ static int List(PulseClient& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int ListCards(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: list-cards requires 0 arguments");
-
+static int ListCards(PulseClient& ponymix, int, char*[]) {
   const auto& cards = ponymix.GetCards();
   for (const auto& c : cards) Print(c);
 
   return 0;
 }
 
-static int ListProfiles(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: list-profiles requires 0 arguments");
-
-  // TODO: figure out how to get a list of cards?
+static int ListProfiles(PulseClient& ponymix, int, char*[]) {
+  // TODO: Is there any sense of a "default card" ?
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
@@ -193,17 +156,13 @@ static int ListProfiles(PulseClient& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int GetVolume(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: get-volume requires 0 arguments");
-
+static int GetVolume(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
   printf("%d\n", device->Volume());
   return 0;
 }
 
-static int SetVolume(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: set-volume requires exactly 1 argument");
-
+static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long volume;
@@ -220,17 +179,13 @@ static int SetVolume(PulseClient& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int GetBalance(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: get-balance requires 0 arguments");
-
+static int GetBalance(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
   printf("%d\n", device->Balance());
   return 0;
 }
 
-static int SetBalance(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: set-balance requires exactly 1 argument");
-
+static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long balance;
@@ -247,9 +202,7 @@ static int SetBalance(PulseClient& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int AdjBalance(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: adj-balance requires exactly 1 argument");
-
+static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long balance;
@@ -266,9 +219,7 @@ static int AdjBalance(PulseClient& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int IncreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: increase requires exactly 1 argument");
-
+static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long delta;
@@ -285,9 +236,7 @@ static int IncreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int DecreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: decrease requires exactly 1 argument");
-
+static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long delta;
@@ -304,9 +253,7 @@ static int DecreaseVolume(PulseClient& ponymix, int argc, char* argv[]) {
   return 0;
 }
 
-static int Mute(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: mute requires 0 arguments");
-
+static int Mute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   if (!ponymix.SetMute(*device, true)) return 1;
@@ -316,9 +263,7 @@ static int Mute(PulseClient& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int Unmute(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: unmute requires 0 arguments");
-
+static int Unmute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   if (!ponymix.SetMute(*device, false)) return 1;
@@ -328,9 +273,7 @@ static int Unmute(PulseClient& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int ToggleMute(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: toggle requires 0 arguments");
-
+static int ToggleMute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   if (!ponymix.SetMute(*device, !ponymix.IsMuted(*device))) return 1;
@@ -340,24 +283,18 @@ static int ToggleMute(PulseClient& ponymix, int argc, char*[]) {
   return 0;
 }
 
-static int IsMuted(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: is-muted requires 0 arguments"); 
-
+static int IsMuted(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
   return !ponymix.IsMuted(*device);
 }
 
-static int SetDefault(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
-
+static int SetDefault(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   return !ponymix.SetDefault(*device);
 }
 
-static int GetProfile(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: get-profile requires 0 arguments");
-
+static int GetProfile(PulseClient& ponymix, int, char*[]) {
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
@@ -366,18 +303,14 @@ static int GetProfile(PulseClient& ponymix, int argc, char*[]) {
   return true;
 }
 
-static int SetProfile(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: set-profile requires 1 argument");
-
+static int SetProfile(PulseClient& ponymix, int, char* argv[]) {
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
   return !ponymix.SetProfile(*card, argv[0]);
 }
 
-static int Move(PulseClient& ponymix, int argc, char* argv[]) {
-  if (argc != 1) errx(1, "error: move requires 1 argument");
-
+static int Move(PulseClient& ponymix, int, char* argv[]) {
   // this assignment is a lie. stfu g++
   enum DeviceType target_devtype = opt_devtype;
   switch (opt_devtype) {
@@ -400,36 +333,66 @@ static int Move(PulseClient& ponymix, int argc, char* argv[]) {
   return !ponymix.Move(*source, *target);
 }
 
-static int Kill(PulseClient& ponymix, int argc, char*[]) {
-  if (argc != 0) errx(1, "error: set-default requires 0 arguments"); 
-
+static int Kill(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   return !ponymix.Kill(*device);
 }
 
-static int (*fn[])(PulseClient& ponymix, int argc, char* argv[]) = {
-  [ACTION_DEFAULTS] = ShowDefaults,
-  [ACTION_LIST] = List,
-  [ACTION_LISTCARDS] = ListCards,
-  [ACTION_LISTPROFILES] = ListProfiles,
-  [ACTION_GETVOL] = GetVolume,
-  [ACTION_SETVOL] = SetVolume,
-  [ACTION_GETBAL] = GetBalance,
-  [ACTION_SETBAL] = SetBalance,
-  [ACTION_ADJBAL] = AdjBalance,
-  [ACTION_INCREASE] = IncreaseVolume,
-  [ACTION_DECREASE] = DecreaseVolume,
-  [ACTION_MUTE] = Mute,
-  [ACTION_UNMUTE] = Unmute,
-  [ACTION_TOGGLE] = ToggleMute,
-  [ACTION_ISMUTED] = IsMuted,
-  [ACTION_SETDEFAULT] = SetDefault,
-  [ACTION_GETPROFILE] = GetProfile,
-  [ACTION_SETPROFILE] = SetProfile,
-  [ACTION_MOVE] = Move,
-  [ACTION_KILL] = Kill,
-};
+static const Command& string_to_command(const char* str) {
+  static std::map<string, const Command> actionmap = {
+    // command name       function    arg min  arg max
+    { "defaults",       { ShowDefaults,   { 0, 0 } } },
+    { "list",           { List,           { 0, 0 } } },
+    { "list-cards",     { ListCards,      { 0, 0 } } },
+    { "list-profiles",  { ListProfiles,   { 0, 0 } } },
+    { "get-volume",     { GetVolume,      { 0, 0 } } },
+    { "set-volume",     { SetVolume,      { 1, 1 } } },
+    { "get-balance",    { GetBalance,     { 0, 0 } } },
+    { "set-balance",    { SetBalance,     { 1, 1 } } },
+    { "adj-balance",    { AdjBalance,     { 1, 1 } } },
+    { "increase",       { IncreaseVolume, { 1, 1 } } },
+    { "decrease",       { DecreaseVolume, { 1, 1 } } },
+    { "mute",           { Mute,           { 0, 0 } } },
+    { "unmute",         { Unmute,         { 0, 0 } } },
+    { "toggle",         { ToggleMute,     { 0, 0 } } },
+    { "is-muted",       { IsMuted,        { 0, 0 } } },
+    { "set-default",    { SetDefault,     { 0, 0 } } },
+    { "get-profile",    { GetProfile,     { 0, 0 } } },
+    { "set-profile",    { SetProfile,     { 1, 1 } } },
+    { "move",           { Move,           { 1, 1 } } },
+    { "kill",           { Kill,           { 0, 0 } } }
+  };
+
+  try {
+    return actionmap.at(str);
+  } catch(std::out_of_range) {
+    errx(1, "error: Invalid action specified: %s", str);
+  }
+}
+
+void error_wrong_args(const Command& cmd, const char* cmdname) {
+  if (cmd.args.min == cmd.args.max) {
+    errx(1, "error: %s takes exactly %d argument%c",
+        cmdname, cmd.args.min, cmd.args.min == 1 ? '\0' : 's');
+  } else {
+    errx(1, "error: %s takes %d to %d arguments\n",
+        cmdname, cmd.args.min, cmd.args.max);
+  }
+}
+
+static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
+  if (argc > 0) {
+    opt_action = argv[0];
+    argv++;
+    argc--;
+  }
+
+  const Command& cmd = string_to_command(opt_action);
+  if (cmd.args.InRange(argc) != 0) error_wrong_args(cmd, opt_action);
+
+  return cmd.fn(ponymix, argc, argv);
+}
 
 void usage() {
   printf("usage: %s [options] <command>...\n", program_invocation_short_name);
@@ -537,7 +500,7 @@ int main(int argc, char* argv[]) {
   ponymix.Populate();
 
   // defaults
-  opt_action = ACTION_DEFAULTS;
+  opt_action = "defaults";
   opt_devtype = DEVTYPE_SINK;
   opt_device = ponymix.GetDefaults().sink.c_str();
   opt_card = ponymix.GetCards()[0].Name().c_str();
@@ -546,13 +509,7 @@ int main(int argc, char* argv[]) {
   argc -= optind;
   argv += optind;
 
-  if (argc > 0) {
-    opt_action = string_to_action(argv[0]);
-    argc--;
-    argv++;
-  }
-
-  return fn[opt_action](ponymix, argc, argv);
+  return CommandDispatch(ponymix, argc, argv);
 }
 
 // vim: set et ts=2 sw=2:

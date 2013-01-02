@@ -493,7 +493,7 @@ Card::Card(const pa_card_info* info) :
 Device::Device(const pa_sink_info* info) :
     type_(DEVTYPE_SINK),
     index_(info->index),
-    name_(!info->name.empty() ? info->name : ""),
+    name_(info->name ? info->name : ""),
     desc_(info->description),
     mute_(info->mute) {
   update_volume(info->volume);
@@ -508,7 +508,7 @@ Device::Device(const pa_sink_info* info) :
 Device::Device(const pa_source_info* info) :
     type_(DEVTYPE_SOURCE),
     index_(info->index),
-    name_(!info->name.empty() ? info->name : ""),
+    name_(info->name ? info->name : ""),
     desc_(info->description),
     mute_(info->mute) {
   update_volume(info->volume);
@@ -523,7 +523,7 @@ Device::Device(const pa_source_info* info) :
 Device::Device(const pa_sink_input_info* info) :
     type_(DEVTYPE_SINK_INPUT),
     index_(info->index),
-    name_(!info->name.empty() ? info->name : ""),
+    name_(info->name ? info->name : ""),
     mute_(info->mute) {
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
@@ -542,7 +542,7 @@ Device::Device(const pa_sink_input_info* info) :
 Device::Device(const pa_source_output_info* info) :
     type_(DEVTYPE_SOURCE_OUTPUT),
     index_(info->index),
-    name_(!info->name.empty() ? info->name : ""),
+    name_(info->name ? info->name : ""),
     mute_(info->mute) {
   update_volume(info->volume);
   volume_percent_ = volume_as_percent(&volume_);

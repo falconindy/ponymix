@@ -98,10 +98,11 @@ static Device* string_to_device_or_die(PulseClient& ponymix,
 
 static void Print(const Device& device, bool shirt) {
   if (shirt) {
-    printf("%s\t%d\t%s\n",
+    printf("%s\t%d\t%s\t%s\n",
            type_to_string(device.Type()),
            device.Index(),
-           device.Name().c_str());
+           device.Name().c_str(),
+           device.Desc().c_str());
     return;
   }
 

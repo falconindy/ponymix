@@ -1,4 +1,4 @@
-.TH ponymix "1" "August 12" "ponymix" "User Commands"
+.TH ponymix "1" "2013-01-02" "ponymix" "User Commands"
 .SH NAME
 ponymix \- cli volume control for PulseAudio
 .SH SYNOPSIS
@@ -8,65 +8,91 @@ ponymix \- cli volume control for PulseAudio
 perform many operations on both device and application sinks and source.
 .SH OPTIONS
 .PP
-.IP "\fB\-d\fR, \fB\-\-device\fR"
-Control input and output devices.
-.IP "\fB\-a\fR, \fB\-\-app\fR"
-Control the playback and recording streams.
-.IP "\fB\-o\fR[\fB=\fR\fISINK\fR]\fR, \fB\-\-sink\fR[\fB=\fR\fISINK\fR], \fB\-\-output\fR[\fB=\fR\fISINK\fR]"
-Specify the sink to control. If the argument is omitted, the default
-sink is used.
-\fISINK\fR must be the numeric index of the sink.
-.IP "\fB\-i\fR[\fB=\fR\fISOURCE\fR]\fR, \fB\-\-source\fR[\fB=\fR\fISOURCE\fR], \fB\-\-input\fR[\fB=\fR\fISOURCE\fR]"
-Specify the source to control. If the argument is omitted,
-the default source is assumed.
-\fISOURCE\fR must be the numeric index of the source.
-.PP
-When neither \fB\-o\fR nor \fB\-i\fR are specified, the default
-source is used. When neither \fB\-d\fR nor \fB\-a\fR are specified,
-devices are operated on.
+.IP "\fB\-c\fR, \fB\-\-card\fR \fICARD\fR"
+Specify a card. By default, the card associated with the specified device
+is used. Cards can be specified by name or numeric index.
+.IP "\fB\-d\fR, \fB\-\-device\fR \fIDEVICE\fR"
+Specify a device other than the default. Devices can be specified by name
+or numeric index.
+.IP "\fB\-t\fR, \fB\-\-devtype\fR \fITYPE\fR"
+Specify a device type to examine, usually in conjunction with the \fB--device\fR
+flag. \fITYPE\fR must be one of \fIsink\fR, \fIsource\fR, \fIsink-input\fR, or
+\fIsource-output\fR.
+.IP "\fB--sink\fR, \fB--output\fR"
+Aliases to \fB--devtype\fR \fIsink\fR.
+.IP "\fB--source\fR, \fB--input\fR"
+Aliases to \fB--devtype\fR \fIsource\fR.
+.IP "\fB--source-output\fR"
+Alias to \fB--devtype\fR \fIsource-output\fR.
+.IP "\fB--sink-input\fR"
+Alias to \fB--devtype\fR \fIsink-input\fR.
 .SH OPERATIONS
-.SS Common Operations
-These options work on both devices and applications.
+.SS Generic Commands
+.IP "\fBhelp\fR"
+Display the usage and exit.
+.SS Device Commands
+These commands are specific to devices. Not all devices will support
+all the listed commands.
 .PP
 .IP "\fBlist\fR"
-List all available sinks and sources.
+List all available devices. This can be filtered using the \fB--devtype\fR flag.
+.IP "\fBlist-short\fR"
+List all available devices in a parseable format.  This can be filtered using the
+\fB--devtype\fR flag.
+.IP "\fBdefaults\fR"
+Display the default sink and source. This is the default command if none
+is specified.
+.IP "\fBset-default\fR \fIDEVICE\fR"
+Set a sink or source by name or numeric index as the default.
 .IP "\fBget-volume\fR"
-Get the volume of the target.
+Get the volume of a device.
 .IP "\fBset-volume\fR \fIVALUE\fR"
-Set the volume of the target. VALUE is an integer between 0 and 150.
+Set the volume of a device. \fIVALUE\fR is an integer between 0 and 150.
 .IP "\fBget-balance\fR"
-Get the balance of the target.
+Get the balance of a device.
 .IP "\fBset-balance\fR \fIVALUE\fR"
-Set the balance of the target. VALUE is an integer from -100 (all left) to 100
+Set the balance of a device. \fIVALUE\fR is an integer from -100 (all left) to 100
 (all right).
 .IP "\fBadj-balance\fR \fIVALUE\fR"
-Adjust balance by the integer increment VALUE. The resulting balance has the same
-bounds as those set by \fBset-balance\fR. The end-of-options indicator (\fI--\fR) is
-required when passing a negative increment.
+Adjust balance by the integer increment \fIVALUE\fR. The resulting balance has
+the same bounds as those set by \fBset-balance\fR. The end-of-options indicator
+(\fI--\fR) is required when passing a negative increment.
 .IP "\fBincrease\fR \fIVALUE\fR"
-Increase the volume percentage of target device or application by integer
+Increase the volume percentage of a device or application by integer
 VALUE. Increasing the volume in this way is capped at 100.
 .IP "\fBdecrease\fR \fIVALUE\fR"
-Decrease the volume percentage of target by the integer VALUE. Decreasing the
-volume in this way is capped at 0.
+Decrease the volume percentage of a device by the integer \fIVALUE\fR.
+Decreasing the volume in this way is capped at 0.
 .IP "\fBmute\fR, \fBunmute\fR, \fBtoggle\fR"
-Mute, unmute, or toggle the mute status on the target.
+Mute, unmute, or toggle the mute status of a device.
 .IP "\fBis-muted\fR"
-Check if the target is muted. ponymix will exit with the status 0 if muted,
-and non-zero otherwise.
-.SS Device Operations
+Check if a device is muted. ponymix will exit zero if muted, and non-zero
+otherwise.
+.SS Application Commands
+These commands are specific to devices which refer to streams of applications.
+For these commands, \fIsink\fR and \fIsource\fR are synonymous with \fIsink-input\fR
+and \fIsource-output\fR, respectively.
+.IP "\fBmove\fR \fIDEVICE\fR"
+Move a device's stream to the given device, specified using the \fB--devtype\fR
+and \fB--device\fR flags. Note that a source output can only be moved to
+another source, and a sink input can only be moved to another sink. The type of
+the target device will be inferred using this logic.
+.IP "\fBkill\fR
+Kill a device's stream, specified using the  \fB--device\fR and \fB--devtype\fR
+flags. This only applies to sink-inputs and source-outputs.
+.SS Card Commands
+These commands are specific to cards.
 .PP
-.IP "\fBdefaults\fR"
-Display the default sink and source.
-.IP "\fBset-default\fR \fIDEVICE_ID\fR"
-Set the default sink or source by numeric index, depending on whether
-\fI\-i\fR or \fI\-o\fR was set.
-.SS Application Operations
-
-.IP "\fBmove\fR \fIAPP_ID\fR \fIDEVICE_ID\fR"
-Move the application's stream by numeric index to another device by numeric index.
-.IP "\fBkill\fR \fIAPP_ID\fR"
-Kill an application's stream by numeric index.
+.IP "\fBlist-cards\fR"
+List all available cards.
+.IP "\fBlist-cards-short\fR"
+List names for all available cards.
+.IP "\fBlist-profiles\fR"
+List profiles for a card.
+.IP "\fBlist-profiles-short\fR"
+List only names for the available profiles for a card.
+.IP "\fBset-profile\fR" \fIPROFILE\fR
+Set the specified profile for a card.
 .SH AUTHORS
 .nf
 Dave Reisner <dreisner@archlinux.org>

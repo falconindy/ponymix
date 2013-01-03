@@ -23,6 +23,7 @@ pulse.o: pulse.cc pulse.h
 install: ponymix
 	install -Dm755 ponymix $(DESTDIR)/usr/bin/ponymix
 	install -Dm644 ponymix.1 $(DESTDIR)/usr/share/man/man1/ponymix.1
+	install -Dm644 zsh-completion $(DESTDIR)/usr/share/zsh/site-functions/_ponymix
 
 clean:
 	$(RM) ponymix pulse.o

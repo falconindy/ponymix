@@ -1,2 +1,3 @@
-This was a quick hack to create a CLI pulse volume control.
-I have no idea how (or if) it works with multiple sinks.
+Ponymix is a command line PulseAudio controller.
+
+Some day this README may feature useful information.

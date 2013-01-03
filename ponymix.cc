@@ -281,6 +281,8 @@ static int SetDefault(PulseClient& ponymix, int, char*[]) {
 }
 
 static int GetProfile(PulseClient& ponymix, int, char*[]) {
+  if (opt_card == nullptr) errx(1, "error: no card selected");
+
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
@@ -290,6 +292,8 @@ static int GetProfile(PulseClient& ponymix, int, char*[]) {
 }
 
 static int SetProfile(PulseClient& ponymix, int, char* argv[]) {
+  if (opt_card == nullptr) errx(1, "error: no card selected");
+
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 

@@ -2,6 +2,7 @@
 
 #include <err.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <map>
@@ -36,10 +37,49 @@ struct Command {
   Range<int> args;
 };
 
+struct Color {
+  Color() {
+    if (isatty(fileno(stdout))) {
+      name = "\033[1m";
+      reset = "\033[0m";
+      over9000 = "\033[7m;31m";
+      veryhigh = "\033[31m";
+      high = "\033[35m";
+      mid = "\033[33m";
+      low = "\033[32m";
+      verylow = "\033[34m";
+      mute = "\033[1;31m";
+    } else {
+      name = "";
+      reset = "";
+      over9000 = "";
+      veryhigh = "";
+      high = "";
+      mid = "";
+      low = "";
+      verylow = "";
+      mute = "";
+    }
+  }
+
+  const char* name;
+  const char* reset;
+
+  // Volume levels
+  const char* over9000;
+  const char* veryhigh;
+  const char* high;
+  const char* mid;
+  const char* low;
+  const char* verylow;
+  const char* mute;
+};
+
 static enum DeviceType opt_devtype;
 static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
+static Color color;
 
 static const char* type_to_string(enum DeviceType t) {
   switch (t) {
@@ -80,24 +120,63 @@ static Device* string_to_device_or_die(PulseClient& ponymix,
 }
 
 static void Print(const Device& device) {
-  printf("%s %d: %s\n"
+  const char *mute = device.Muted() ? " [Muted]" : "";
+  const char *volume_color;
+
+  if (device.Volume() < 20) {
+    volume_color = color.verylow;
+  } else if (device.Volume() < 40) {
+    volume_color = color.low;
+  } else if (device.Volume() < 60) {
+    volume_color = color.mid;
+  } else if (device.Volume() < 80) {
+    volume_color = color.high;
+  } else if (device.Volume() <= 100) {
+    volume_color = color.veryhigh;
+  } else {
+    volume_color = color.over9000;
+  }
+
+  printf("%s%s %d:%s %s\n"
          "  %s\n"
-         "  Avg. Volume: %d%%%s\n",
+         "  Avg. Volume: %s%d%%%s%s%s%s\n",
+         color.name,
          type_to_string(device.Type()),
          device.Index(),
+         color.reset,
          device.Name().c_str(),
          device.Desc().c_str(),
+         volume_color,
          device.Volume(),
-         device.Muted() ? " [muted]" : "");
+         color.reset,
+         color.mute,
+         mute,
+         color.reset);
 }
 
 static void Print(const Card& card) {
-  printf("%s\n", card.Name().c_str());
+  printf("%scard %d:%s %s\n"
+         "  Driver: %s\n"
+         "  Active Profile: %s\n",
+         color.name,
+         card.Index(),
+         color.reset,
+         card.Name().c_str(),
+         card.Driver().c_str(),
+         card.ActiveProfile().name.c_str());
 }
 
 static void Print(const Profile& profile, bool active) {
-  printf("%s: %s%s\n",
-         profile.name.c_str(), profile.desc.c_str(), active ? " [active]" : "");
+  const char* active_str = active ? " [active]" : "";
+  printf("%s%s%s%s%s%s\n"
+         "  %s\n",
+         color.name,
+         profile.name.c_str(),
+         color.reset,
+         color.low,
+         active_str,
+         color.reset,
+         profile.desc.c_str());
 }
 
 static int ShowDefaults(PulseClient& ponymix, int, char*[]) {

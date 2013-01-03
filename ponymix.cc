@@ -8,33 +8,6 @@
 #include <map>
 #include <stdexcept>
 
-enum Action {
-  ACTION_DEFAULTS,
-  ACTION_LIST,
-  ACTION_LIST_SHORT,
-  ACTION_LISTCARDS,
-  ACTION_LISTCARDS_SHORT,
-  ACTION_LISTPROFILES,
-  ACTION_LISTPROFILES_SHORT,
-  ACTION_GETVOL,
-  ACTION_SETVOL,
-  ACTION_GETBAL,
-  ACTION_SETBAL,
-  ACTION_ADJBAL,
-  ACTION_INCREASE,
-  ACTION_DECREASE,
-  ACTION_MUTE,
-  ACTION_UNMUTE,
-  ACTION_TOGGLE,
-  ACTION_ISMUTED,
-  ACTION_SETDEFAULT,
-  ACTION_GETPROFILE,
-  ACTION_SETPROFILE,
-  ACTION_MOVE,
-  ACTION_KILL,
-  ACTION_INVALID,
-};
-
 struct Command {
   int (*fn)(PulseClient&, int, char*[]);
   Range<int> args;
@@ -45,7 +18,7 @@ struct Color {
     if (isatty(fileno(stdout))) {
       name = "\033[1m";
       reset = "\033[0m";
-      over9000 = "\033[7m;31m";
+      over9000 = "\033[7;31m";
       veryhigh = "\033[31m";
       high = "\033[35m";
       mid = "\033[33m";

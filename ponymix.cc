@@ -485,8 +485,10 @@ static void usage() {
         "     --sink-input        alias to -t sink-input\n"
         "     --source-output     alias to -t source-output\n", stdout);
 
-  fputs("\nCommon Commands:\n"
+  fputs("\nDevice Commands:\n"
         "  help                   display this message\n"
+        "  defaults               list default devices (default command)\n"
+        "  set-default            set default device by ID\n"
         "  list                   list available devices\n"
         "  list-short             list available devices (short form)\n"
         "  list-cards             list available cards\n"
@@ -501,21 +503,15 @@ static void usage() {
         "  mute                   mute device\n"
         "  unmute                 unmute device\n"
         "  toggle                 toggle mute\n"
-        "  is-muted               check if muted\n", stdout);
+        "  is-muted               check if muted\n"
+        "  move DEVICE            move target device to DEVICE\n"
+        "  kill DEVICE            kill target DEVICE\n", stdout);
 
   fputs("\nCard Commands:\n"
         "  list-profiles          list available profiles for a card\n"
         "  list-profiles-short    list available profiles for a card (short form)\n"
         "  get-profile            get active profile for card\n"
-        "  set-profile PROFILE    set profile for a card\n"
-
-        "\nDevice Commands:\n"
-        "  defaults               list default devices (default command)\n"
-        "  set-default DEVICE     set default device by ID\n"
-
-        "\nApplication Commands:\n"
-        "  move DEVICE            move target device to DEVICE\n"
-        "  kill DEVICE            kill target DEVICE\n", stdout);
+        "  set-profile PROFILE    set profile for a card\n", stdout);
 
   exit(EXIT_SUCCESS);
 }

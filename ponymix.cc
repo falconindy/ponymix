@@ -11,8 +11,11 @@
 enum Action {
   ACTION_DEFAULTS,
   ACTION_LIST,
+  ACTION_LIST_SHORT,
   ACTION_LISTCARDS,
+  ACTION_LISTCARDS_SHORT,
   ACTION_LISTPROFILES,
+  ACTION_LISTPROFILES_SHORT,
   ACTION_GETVOL,
   ACTION_SETVOL,
   ACTION_GETBAL,
@@ -76,6 +79,7 @@ struct Color {
 };
 
 static enum DeviceType opt_devtype;
+static bool opt_listrestrict;
 static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
@@ -88,9 +92,9 @@ static const char* type_to_string(enum DeviceType t) {
   case DEVTYPE_SOURCE:
     return "source";
   case DEVTYPE_SINK_INPUT:
-    return "sink input";
+    return "sink-input";
   case DEVTYPE_SOURCE_OUTPUT:
-    return "source output";
+    return "source-output";
   }
 
   /* impossibiru! */
@@ -119,7 +123,15 @@ static Device* string_to_device_or_die(PulseClient& ponymix,
   return device;
 }
 
-static void Print(const Device& device) {
+static void Print(const Device& device, bool shirt) {
+  if (shirt) {
+    printf("%s\t%d\t%s\n",
+           type_to_string(device.Type()),
+           device.Index(),
+           device.Name().c_str());
+    return;
+  }
+
   const char *mute = device.Muted() ? " [Muted]" : "";
   const char *volume_color;
 
@@ -154,7 +166,12 @@ static void Print(const Device& device) {
          color.reset);
 }
 
-static void Print(const Card& card) {
+static void Print(const Card& card, bool shirt) {
+  if (shirt) {
+    printf("%s\n", card.Name().c_str());
+    return;
+  }
+
   printf("%scard %d:%s %s\n"
          "  Driver: %s\n"
          "  Active Profile: %s\n",
@@ -166,7 +183,12 @@ static void Print(const Card& card) {
          card.ActiveProfile().name.c_str());
 }
 
-static void Print(const Profile& profile, bool active) {
+static void Print(const Profile& profile, bool active, bool shirt) {
+  if (shirt) {
+    printf("%s\n", profile.name.c_str());
+    return;
+  }
+
   const char* active_str = active ? " [active]" : "";
   printf("%s%s%s%s%s%s\n"
          "  %s\n",
@@ -181,44 +203,76 @@ static void Print(const Profile& profile, bool active) {
 
 static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
   const auto& info = ponymix.GetDefaults();
-  Print(*ponymix.GetSink(info.sink));
-  Print(*ponymix.GetSource(info.source));
+  Print(*ponymix.GetSink(info.sink), false);
+  Print(*ponymix.GetSource(info.source), false);
+  return 0;
+}
+
+static int list_devices(PulseClient& ponymix, bool shirt) {
+  if (opt_listrestrict) {
+    const auto& devices = ponymix.GetDevices(opt_devtype);
+    for (const auto& d : devices) Print(d, shirt);
+    return 0;
+  }
+
+  const auto& sinks = ponymix.GetSinks();
+  for (const auto& s : sinks) Print(s, shirt);
+
+  const auto& sources = ponymix.GetSources();
+  for (const auto& s : sources) Print(s, shirt);
+
+  const auto& sinkinputs = ponymix.GetSinkInputs();
+  for (const auto& s : sinkinputs) Print(s, shirt);
+
+  const auto& sourceoutputs = ponymix.GetSourceOutputs();
+  for (const auto& s : sourceoutputs) Print(s, shirt);
+
   return 0;
 }
 
 static int List(PulseClient& ponymix, int, char*[]) {
-  const auto& sinks = ponymix.GetSinks();
-  for (const auto& s : sinks) Print(s);
+  return list_devices(ponymix, false);
+}
 
-  const auto& sources = ponymix.GetSources();
-  for (const auto& s : sources) Print(s);
+static int ListShort(PulseClient& ponymix, int, char*[]) {
+  return list_devices(ponymix, true);
+}
 
-  const auto& sinkinputs = ponymix.GetSinkInputs();
-  for (const auto& s : sinkinputs) Print(s);
-
-  const auto& sourceoutputs = ponymix.GetSourceOutputs();
-  for (const auto& s : sourceoutputs) Print(s);
+static int list_cards(PulseClient& ponymix, bool shirt) {
+  const auto& cards = ponymix.GetCards();
+  for (const auto& c : cards) Print(c, shirt);
 
   return 0;
 }
 
 static int ListCards(PulseClient& ponymix, int, char*[]) {
-  const auto& cards = ponymix.GetCards();
-  for (const auto& c : cards) Print(c);
-
-  return 0;
+  return list_cards(ponymix, false);
 }
 
-static int ListProfiles(PulseClient& ponymix, int, char*[]) {
+static int ListCardsShort(PulseClient& ponymix, int, char*[]) {
+  return list_cards(ponymix, true);
+}
+
+static int list_profiles(PulseClient& ponymix, bool shirt) {
   if (opt_card == nullptr) errx(1, "error: no card selected");
 
   auto card = ponymix.GetCard(opt_card);
   if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
 
   const auto& profiles = card->Profiles();
-  for (const auto& p : profiles) Print(p, p.name == card->ActiveProfile().name);
+  for (const auto& p : profiles) Print(p,
+                                       p.name == card->ActiveProfile().name,
+                                       shirt);
 
   return 0;
+}
+
+static int ListProfiles(PulseClient& ponymix, int, char*[]) {
+  return list_profiles(ponymix, false);
+}
+
+static int ListProfilesShort(PulseClient& ponymix, int, char*[]) {
+  return list_profiles(ponymix, true);
 }
 
 static int GetVolume(PulseClient& ponymix, int, char*[]) {
@@ -411,26 +465,29 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
 static const Command& string_to_command(const char* str) {
   static std::map<string, const Command> actionmap = {
     // command name       function    arg min  arg max
-    { "defaults",       { ShowDefaults,   { 0, 0 } } },
-    { "list",           { List,           { 0, 0 } } },
-    { "list-cards",     { ListCards,      { 0, 0 } } },
-    { "list-profiles",  { ListProfiles,   { 0, 0 } } },
-    { "get-volume",     { GetVolume,      { 0, 0 } } },
-    { "set-volume",     { SetVolume,      { 1, 1 } } },
-    { "get-balance",    { GetBalance,     { 0, 0 } } },
-    { "set-balance",    { SetBalance,     { 1, 1 } } },
-    { "adj-balance",    { AdjBalance,     { 1, 1 } } },
-    { "increase",       { IncreaseVolume, { 1, 1 } } },
-    { "decrease",       { DecreaseVolume, { 1, 1 } } },
-    { "mute",           { Mute,           { 0, 0 } } },
-    { "unmute",         { Unmute,         { 0, 0 } } },
-    { "toggle",         { ToggleMute,     { 0, 0 } } },
-    { "is-muted",       { IsMuted,        { 0, 0 } } },
-    { "set-default",    { SetDefault,     { 0, 0 } } },
-    { "get-profile",    { GetProfile,     { 0, 0 } } },
-    { "set-profile",    { SetProfile,     { 1, 1 } } },
-    { "move",           { Move,           { 1, 1 } } },
-    { "kill",           { Kill,           { 0, 0 } } }
+    { "defaults",            { ShowDefaults,        { 0, 0 } } },
+    { "list",                { List,                { 0, 0 } } },
+    { "list-short",          { ListShort,           { 0, 0 } } },
+    { "list-cards",          { ListCards,           { 0, 0 } } },
+    { "list-cards-short",    { ListCardsShort,      { 0, 0 } } },
+    { "list-profiles",       { ListProfiles,        { 0, 0 } } },
+    { "list-profiles-short", { ListProfilesShort,   { 0, 0 } } },
+    { "get-volume",          { GetVolume,           { 0, 0 } } },
+    { "set-volume",          { SetVolume,           { 1, 1 } } },
+    { "get-balance",         { GetBalance,          { 0, 0 } } },
+    { "set-balance",         { SetBalance,          { 1, 1 } } },
+    { "adj-balance",         { AdjBalance,          { 1, 1 } } },
+    { "increase",            { IncreaseVolume,      { 1, 1 } } },
+    { "decrease",            { DecreaseVolume,      { 1, 1 } } },
+    { "mute",                { Mute,                { 0, 0 } } },
+    { "unmute",              { Unmute,              { 0, 0 } } },
+    { "toggle",              { ToggleMute,          { 0, 0 } } },
+    { "is-muted",            { IsMuted,             { 0, 0 } } },
+    { "set-default",         { SetDefault,          { 0, 0 } } },
+    { "get-profile",         { GetProfile,          { 0, 0 } } },
+    { "set-profile",         { SetProfile,          { 1, 1 } } },
+    { "move",                { Move,                { 1, 1 } } },
+    { "kill",                { Kill,                { 0, 0 } } }
   };
 
   try {
@@ -438,6 +495,56 @@ static const Command& string_to_command(const char* str) {
   } catch(std::out_of_range) {
     errx(1, "error: Invalid action specified: %s", str);
   }
+}
+
+static void usage() {
+  printf("usage: %s [options] <command>...\n", program_invocation_short_name);
+  fputs("\nOptions:\n"
+        " -h, --help              display this help and exit\n\n"
+
+        " -c, --card CARD         target card (index or name)\n"
+        " -d, --device DEVICE     target device (index or name)\n"
+        " -t, --devtype TYPE      device type\n"
+        "     --source            alias to -t source\n"
+        "     --input             alais to -t source\n"
+        "     --sink              alias to -t sink\n"
+        "     --output            alias to -t sink\n"
+        "     --sink-input        alias to -t sink-input\n"
+        "     --source-output     alias to -t source-output\n", stdout);
+
+  fputs("\nCommon Commands:\n"
+        "  help                   display this message\n"
+        "  list                   list available devices\n"
+        "  list-short             list available devices (short form)\n"
+        "  list-cards             list available cards\n"
+        "  list-cards-short       list available cards (short form)\n"
+        "  get-volume             get volume for device\n"
+        "  set-volume VALUE       set volume for device\n"
+        "  get-balance            get balance for device\n"
+        "  set-balance VALUE      set balance for device\n"
+        "  adj-balance VALUE      increase or decrease balance for device\n"
+        "  increase VALUE         increase volume\n", stdout);
+  fputs("  decrease VALUE         decrease volume\n"
+        "  mute                   mute device\n"
+        "  unmute                 unmute device\n"
+        "  toggle                 toggle mute\n"
+        "  is-muted               check if muted\n", stdout);
+
+  fputs("\nCard Commands:\n"
+        "  list-profiles          list available profiles for a card\n"
+        "  list-profiles-short    list available profiles for a card (short form)\n"
+        "  get-profile            get active profile for card\n"
+        "  set-profile PROFILE    set profile for a card\n"
+
+        "\nDevice Commands:\n"
+        "  defaults               list default devices (default command)\n"
+        "  set-default DEVICE     set default device by ID\n"
+
+        "\nApplication Commands:\n"
+        "  move DEVICE            move target device to DEVICE\n"
+        "  kill DEVICE            kill target DEVICE\n", stdout);
+
+  exit(EXIT_SUCCESS);
 }
 
 void error_wrong_args(const Command& cmd, const char* cmdname) {
@@ -457,56 +564,15 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
     argc--;
   }
 
+  if (strcmp(opt_action, "help") == 0) {
+    usage();
+    return 0;
+  }
+
   const Command& cmd = string_to_command(opt_action);
   if (cmd.args.InRange(argc) != 0) error_wrong_args(cmd, opt_action);
 
   return cmd.fn(ponymix, argc, argv);
-}
-
-void usage() {
-  printf("usage: %s [options] <command>...\n", program_invocation_short_name);
-  fputs("\nOptions:\n"
-        " -h, --help              display this help and exit\n\n"
-
-        " -c, --card CARD         target card (index or name)\n"
-        " -d, --device DEVICE     target device (index or name)\n"
-        " -t, --devtype TYPE      device type\n"
-        "     --source            alias to -t source\n"
-        "     --input             alais to -t source\n"
-        "     --sink              alias to -t sink\n"
-        "     --output            alias to -t sink\n"
-        "     --sink-input        alias to -t sink-input\n"
-        "     --source-output     alias to -t source-output\n", stdout);
-
-  fputs("\nCommon Commands:\n"
-        "  list                   list available devices\n"
-        "  list-cards             list available cards\n"
-        "  get-volume             get volume for device\n"
-        "  set-volume VALUE       set volume for device\n"
-        "  get-balance            get balance for device\n"
-        "  set-balance VALUE      set balance for device\n"
-        "  adj-balance VALUE      increase or decrease balance for device\n"
-        "  increase VALUE         increase volume\n", stdout);
-  fputs("  decrease VALUE         decrease volume\n"
-        "  mute                   mute device\n"
-        "  unmute                 unmute device\n"
-        "  toggle                 toggle mute\n"
-        "  is-muted               check if muted\n", stdout);
-
-  fputs("\nCard Commands:\n"
-        "  list-profiles          list available profiles for a card\n"
-        "  get-profile            get active profile for card\n"
-        "  set-profile PROFILE    set profile for a card\n"
-
-        "\nDevice Commands:\n"
-        "  defaults               list default devices (default command)\n"
-        "  set-default DEVICE     set default device by ID\n"
-
-        "\nApplication Commands:\n"
-        "  move DEVICE            move target device to DEVICE\n"
-        "  kill DEVICE            kill target DEVICE\n", stdout);
-
-  exit(EXIT_SUCCESS);
 }
 
 bool parse_options(int argc, char** argv) {
@@ -545,16 +611,20 @@ bool parse_options(int argc, char** argv) {
     case 0x100:
     case 0x101:
       opt_devtype = DEVTYPE_SINK;
+      opt_listrestrict = true;
       break;
     case 0x102:
     case 0x103:
       opt_devtype = DEVTYPE_SOURCE;
+      opt_listrestrict = true;
       break;
     case 0x104:
       opt_devtype = DEVTYPE_SINK_INPUT;
+      opt_listrestrict = true;
       break;
     case 0x105:
       opt_devtype = DEVTYPE_SOURCE_OUTPUT;
+      opt_listrestrict = true;
       break;
     default:
       return false;

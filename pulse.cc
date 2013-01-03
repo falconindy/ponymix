@@ -342,6 +342,7 @@ bool PulseClient::SetVolume(Device& device, long volume) {
     return false;
   }
 
+  volume = volume_range_.Clamp(volume);
   const pa_cvolume *cvol = value_to_cvol(volume, &device.volume_);
   pa_operation* op = device.ops_.SetVolume(context_,
                                            device.index_,
@@ -357,13 +358,11 @@ bool PulseClient::SetVolume(Device& device, long volume) {
 }
 
 bool PulseClient::IncreaseVolume(Device& device, long increment) {
-  return SetVolume(device,
-                   volume_range_.Clamp(device.volume_percent_ + increment));
+  return SetVolume(device, device.volume_percent_ + increment);
 }
 
 bool PulseClient::DecreaseVolume(Device& device, long increment) {
-  return SetVolume(device,
-                   volume_range_.Clamp(device.volume_percent_ - increment));
+  return SetVolume(device, device.volume_percent_ - increment);
 }
 
 bool PulseClient::SetBalance(Device& device, long balance) {
@@ -374,6 +373,7 @@ bool PulseClient::SetBalance(Device& device, long balance) {
     return false;
   }
 
+  balance = balance_range_.Clamp(balance);
   pa_cvolume *cvol = pa_cvolume_set_balance(&device.volume_,
                                             &device.channels_,
                                             balance / 100.0);
@@ -391,13 +391,11 @@ bool PulseClient::SetBalance(Device& device, long balance) {
 }
 
 bool PulseClient::IncreaseBalance(Device& device, long increment) {
-  return SetBalance(device,
-                    balance_range_.Clamp(device.balance_ + increment));
+  return SetBalance(device, device.balance_ + increment);
 }
 
 bool PulseClient::DecreaseBalance(Device& device, long increment) {
-  return SetBalance(device,
-                    balance_range_.Clamp(device.balance_ - increment));
+  return SetBalance(device, device.balance_ - increment);
 }
 
 int PulseClient::GetVolume(const Device& device) const {

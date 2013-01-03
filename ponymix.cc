@@ -430,6 +430,17 @@ static int Move(PulseClient& ponymix, int, char* argv[]) {
 }
 
 static int Kill(PulseClient& ponymix, int, char*[]) {
+  switch (opt_devtype) {
+  case DEVTYPE_SOURCE:
+    opt_devtype = DEVTYPE_SOURCE_OUTPUT;
+    break;
+  case DEVTYPE_SINK:
+    opt_devtype = DEVTYPE_SINK_INPUT;
+    break;
+  default:
+    break;
+  }
+
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   return !ponymix.Kill(*device);
@@ -503,7 +514,8 @@ static void usage() {
         "  mute                   mute device\n"
         "  unmute                 unmute device\n"
         "  toggle                 toggle mute\n"
-        "  is-muted               check if muted\n"
+        "  is-muted               check if muted\n", stdout);
+  fputs("\nApplication Commands:\n"
         "  move DEVICE            move target device to DEVICE\n"
         "  kill DEVICE            kill target DEVICE\n", stdout);
 

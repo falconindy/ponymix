@@ -150,6 +150,9 @@ Card* PulseClient::GetCard(const uint32_t& index) {
 }
 
 Card* PulseClient::GetCard(const string& name) {
+  long val;
+  if (xstrtol(name.c_str(), &val) == 0) return GetCard(val);
+
   for (Card& card : cards_) {
     if (card.name_ == name) return &card;
   }

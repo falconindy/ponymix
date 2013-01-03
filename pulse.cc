@@ -182,42 +182,42 @@ Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
 
 Device* PulseClient::GetDevice(const uint32_t& index, enum DeviceType type) {
   switch (type) {
-    case DEVTYPE_SINK:
-      return GetSink(index);
-    case DEVTYPE_SOURCE:
-      return GetSource(index);
-    case DEVTYPE_SINK_INPUT:
-      return GetSinkInput(index);
-    case DEVTYPE_SOURCE_OUTPUT:
-      return GetSourceOutput(index);
+  case DEVTYPE_SINK:
+    return GetSink(index);
+  case DEVTYPE_SOURCE:
+    return GetSource(index);
+  case DEVTYPE_SINK_INPUT:
+    return GetSinkInput(index);
+  case DEVTYPE_SOURCE_OUTPUT:
+    return GetSourceOutput(index);
   }
   throw std::runtime_error("Impossible DeviceType encountered in GetDevice");
 }
 
 Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
   switch (type) {
-    case DEVTYPE_SINK:
-      return GetSink(name);
-    case DEVTYPE_SOURCE:
-      return GetSource(name);
-    case DEVTYPE_SINK_INPUT:
-      return GetSinkInput(name);
-    case DEVTYPE_SOURCE_OUTPUT:
-      return GetSourceOutput(name);
+  case DEVTYPE_SINK:
+    return GetSink(name);
+  case DEVTYPE_SOURCE:
+    return GetSource(name);
+  case DEVTYPE_SINK_INPUT:
+    return GetSinkInput(name);
+  case DEVTYPE_SOURCE_OUTPUT:
+    return GetSourceOutput(name);
   }
   throw std::runtime_error("Impossible DeviceType encountered in GetDevice");
 }
 
 const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
   switch (type) {
-    case DEVTYPE_SINK:
-      return GetSinks();
-    case DEVTYPE_SOURCE:
-      return GetSources();
-    case DEVTYPE_SINK_INPUT:
-      return GetSinkInputs();
-    case DEVTYPE_SOURCE_OUTPUT:
-      return GetSourceOutputs();
+  case DEVTYPE_SINK:
+    return GetSinks();
+  case DEVTYPE_SOURCE:
+    return GetSources();
+  case DEVTYPE_SINK_INPUT:
+    return GetSinkInputs();
+  case DEVTYPE_SOURCE_OUTPUT:
+    return GetSourceOutputs();
   }
   throw std::runtime_error("Impossible DeviceType encountered in GetDevices");
 }

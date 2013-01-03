@@ -226,11 +226,24 @@ static int ListCardsShort(PulseClient& ponymix, int, char*[]) {
   return list_cards(ponymix, true);
 }
 
-static int list_profiles(PulseClient& ponymix, bool shirt) {
-  if (opt_card == nullptr) errx(1, "error: no card selected");
+static Card* resolve_active_card_or_die(PulseClient& ponymix) {
+  Card* card;
+  if (opt_card == nullptr) {
+    auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+    card = ponymix.GetCard(*device);
+    if (card == nullptr) errx(1, "error: no card found or selected.");
+  } else {
+    card = ponymix.GetCard(opt_card);
+    if (card == nullptr) {
+      errx(1, "error: no match found for card: %s", opt_card);
+    }
+  }
 
-  auto card = ponymix.GetCard(opt_card);
-  if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
+  return card;
+}
+
+static int list_profiles(PulseClient& ponymix, bool shirt) {
+  auto card = resolve_active_card_or_die(ponymix);
 
   const auto& profiles = card->Profiles();
   for (const auto& p : profiles) Print(p,
@@ -387,22 +400,14 @@ static int SetDefault(PulseClient& ponymix, int, char*[]) {
 }
 
 static int GetProfile(PulseClient& ponymix, int, char*[]) {
-  if (opt_card == nullptr) errx(1, "error: no card selected");
-
-  auto card = ponymix.GetCard(opt_card);
-  if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
-
+  auto card = resolve_active_card_or_die(ponymix);
   printf("%s\n", card->ActiveProfile().name.c_str());
 
   return true;
 }
 
 static int SetProfile(PulseClient& ponymix, int, char* argv[]) {
-  if (opt_card == nullptr) errx(1, "error: no card selected");
-
-  auto card = ponymix.GetCard(opt_card);
-  if (card == nullptr) errx(1, "error: no match found for card: %s", opt_card);
-
+  auto card = resolve_active_card_or_die(ponymix);
   return !ponymix.SetProfile(*card, argv[0]);
 }
 
@@ -619,7 +624,8 @@ int main(int argc, char* argv[]) {
   PulseClient ponymix("ponymix");
   ponymix.Populate();
 
-  // defaults
+  // defaults. intentionally, we don't set a card -- only get
+  // that on demand if a function needs it.
   ServerInfo defaults = ponymix.GetDefaults();
   opt_action = "defaults";
   opt_devtype = DEVTYPE_SINK;
@@ -628,15 +634,6 @@ int main(int argc, char* argv[]) {
   if (!parse_options(argc, argv)) return 1;
   argc -= optind;
   argv += optind;
-
-  // cards are tricky... find the one that belongs to the chosen sink.
-  if (opt_card == nullptr) {
-    const Device* device = ponymix.GetDevice(opt_device, opt_devtype);
-    if (device) {
-      const Card* card = ponymix.GetCard(*device);
-      if (card) opt_card = card->Name().c_str();
-    }
-  }
 
   return CommandDispatch(ponymix, argc, argv);
 }

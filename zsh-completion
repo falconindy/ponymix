@@ -1,0 +1,128 @@
+#compdef ponymix
+
+local -a _commands _movesink
+local state line curcontext="$curcontext"
+typeset -U _commands
+_common_command(){
+    _commands+=(
+        'list:list available dsevices'
+        'list-short:list available devices, short form'
+        'list-cards:list available cards'
+        'list-cards-short:list available cards, short form'
+        'get-volume:get volume for device'
+        'set-volume:set volume for device:integer'
+        'get-balance:get balance for device'
+        'set-balance:set balance for device:integer'
+        'adj-balance:increase or decrease balance for device:integer'
+        'increase:increase volume:integer'
+        'decrease:decrease volume:integer'
+        'mute:mute device'
+        'kill:kill device'
+        'unmute:unmute device'
+        'toggle:toggle mute'
+        'is-muted:check if muted'
+    )
+    cmd="${${_commands[(r)$words[$((CURRENT - 1))]:*]%%:*}}"
+    if (( !  $#cmd )); then
+        _describe commands _commands;
+    else
+        if (( $#cmd )) && [[ "$cmd" == set-* || "$cmd" == adj-* ]]; then
+            _message "number for $cmd"
+        else
+            _message "no more options"
+        fi
+    fi
+}
+
+_devices(){
+    local -a _sourcelist _sinklist _inputlist
+    for f in ${(f)"$(_call_program sink_tag "$service --sink list-short")"}; do
+        _sinklist+=(${${(ps:\t:)f}[3]}:${(q)${(ps:\t:)f}[4]})
+    done
+    for f in ${(f)"$(_call_program source_tag "$service --source list-short")"}; do
+        _sourcelist+=(${${(ps:\t:)f}[3]}:${(q)${(ps:\t:)f}[4]})
+    done
+    for f in ${(f)"$(_call_program sink_input_tag "$service --sink-input list-short")"}; do
+        _inputlist+=(${${(ps:\t:)f}[2]}:${(q)${(ps:\t:)f}[4]})
+    done
+
+
+    if [[ $words[(r)*sink-input*] == *sink-input ]]; then
+        _describe "sink inputs" _inputlist
+    elif [[ $words[(r)*(sink|output)*] == *(sink|output) ]]; then
+        _describe "sink" _sinklist
+    elif [[ $words[(r)*(source|input)*] == *(source|input) ]]; then
+        _describe "source" _sourcelist
+    else
+        _alternative \
+            "source_tag:source list:((${(q)_sourcelist[@]}))" \
+            "sink_tag:sink:((${(q)_sinklist[@]}))" \
+            "sink_input_tag:sink_input:((${(q)_inputlist[@]}))"
+    fi
+}
+
+_set_profiles(){
+    local -a _profileslist
+    local _card
+
+    _card=$words[$(($words[(i)-(c|-card)] + 1))]
+    _profileslist=(${${(f)"$(_call_program profiles_tag "$service --card $_card list-profiles-short")"}//:/\:})
+    compadd "$@" - "$_profileslist[@]"
+}
+
+_cards(){
+    local -a _cardlist
+    _cardlist=(${(f)"$(_call_program card_tag "$service list-cards-short")"})
+    _describe 'card list' _cardlist
+}
+_card_commands=(
+    'list-profiles:list available profiles for a card'
+    'list-profiles-short:list available profiles for a card, short form'
+    'get-profile:get active profile for card'
+    'set-profile:set profile for a card:_set_profiles'
+    )
+
+if [[ -n $words[(r)*(sink-input|source-output)] ]]; then
+    _commands+=(
+        'move:Move device'
+        )
+fi
+
+[[ $words[(r)-(d|-device)] == -(d|-device) ]] && _commands+=(
+        'defaults:list default devices (default command)'
+        'set-default:set default devices')
+
+[[ $words[(r)-(c|-card)] == -(c|-card) ]] && _commands+=( "$_card_commands[@]" )
+
+if [[ $words[$((CURRENT - 1))] == move ]]; then
+    for f in ${(f)"$(_call_program sink_tag "$service --sink list-short")"}; do
+        _movesink+=(${${(ps:\t:)f}[3]}:${(q)${(ps:\t:)f}[4]})
+    done
+    _describe "sink" _movesink
+elif [[ $words[$((CURRENT - 1))] == set-profile ]]; then
+    _set_profiles
+else
+    _arguments -C \
+        '::common commands:_common_command' \
+        '(-c --card -d --device)'{-d,--device}'[Select Device]:devices:_devices' \
+        - '(help)' \
+            {-h,--help}'[display this help and exit]' \
+        - '(sink)' \
+            '--sink[alias to type sink]' \
+            '--output[alias to type sink]' \
+            {-t,--devtype}'[Device Type]: :(sink output)' \
+        - '(source)' \
+            '--source[alias to type source]' \
+            '--input[alias to type source]' \
+            {-t,--devtype}'[Device Type]: :(source input)' \
+        - '(sink-input)' \
+            '--sink-input[alias to type sink-input]' \
+            {-t,--devtype}'[Device Type]: :(sink-input)' \
+        - '(source-output)' \
+            {-t,--devtype}'[Device Type]:device types:(source-output)' \
+            '--source-output[alias to type sour-output]' \
+        - '(card)' \
+            '(-d --device)'{-c,--card}'[target card]:Cards:_cards:Card Commands:((${(q)_card_commands}))'
+fi
+
+#vim: set ft=zsh sw=4 ts=4 noet

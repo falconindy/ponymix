@@ -595,6 +595,7 @@ bool parse_options(int argc, char** argv) {
       break;
     case 't':
       opt_devtype = string_to_devtype_or_die(optarg);
+      opt_listrestrict = true;
       break;
     case 0x100:
     case 0x101:

@@ -24,8 +24,9 @@ enum DeviceType {
 
 struct Profile {
   Profile(const pa_card_profile_info& info) :
-    name(info.name),
-    desc(info.description) {}
+      name(info.name),
+      desc(info.description) {
+  }
 
   string name;
   string desc;

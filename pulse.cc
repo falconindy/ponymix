@@ -166,7 +166,8 @@ Card* PulseClient::GetCard(const Device& device) {
   return nullptr;
 }
 
-Device* PulseClient::get_device(vector<Device>& devices, const uint32_t& index) {
+Device* PulseClient::get_device(vector<Device>& devices,
+                                const uint32_t& index) {
   for (Device& device : devices) {
     if (device.index_ == index) return &device;
   }

@@ -32,11 +32,15 @@ struct Profile {
 };
 
 struct Operations {
-  pa_operation* (*Mute)(pa_context*, uint32_t, int, pa_context_success_cb_t, void*);
-  pa_operation* (*SetVolume)(pa_context*, uint32_t, const pa_cvolume*, pa_context_success_cb_t, void*);
-  pa_operation* (*SetDefault)(pa_context*, const char*, pa_context_success_cb_t, void*);
+  pa_operation* (*Mute)(pa_context*, uint32_t, int, pa_context_success_cb_t,
+                        void*);
+  pa_operation* (*SetVolume)(pa_context*, uint32_t, const pa_cvolume*,
+                             pa_context_success_cb_t, void*);
+  pa_operation* (*SetDefault)(pa_context*, const char*, pa_context_success_cb_t,
+                              void*);
   pa_operation* (*Kill)(pa_context*, uint32_t, pa_context_success_cb_t, void*);
-  pa_operation* (*Move)(pa_context *, uint32_t, uint32_t, pa_context_success_cb_t, void *);
+  pa_operation* (*Move)(pa_context *, uint32_t, uint32_t,
+                        pa_context_success_cb_t, void *);
 };
 
 class Device {

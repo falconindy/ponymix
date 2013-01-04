@@ -527,7 +527,8 @@ static void usage() {
 
   fputs("\nCard Commands:\n"
         "  list-profiles          list available profiles for a card\n"
-        "  list-profiles-short    list available profiles for a card (short form)\n"
+        "  list-profiles-short    list available profiles for a card"
+                                  "(short form)\n"
         "  get-profile            get active profile for card\n"
         "  set-profile PROFILE    set profile for a card\n", stdout);
 

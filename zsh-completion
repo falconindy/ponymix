@@ -6,7 +6,9 @@ typeset -U _commands
 _common_command(){
     _commands+=(
         'list:list available dsevices'
+        'list-short:list available devices, short form'
         'list-cards:list available cards'
+        'list-cards-short:list available cards, short form'
         'get-volume:get volume for device'
         'set-volume:set volume for device:integer'
         'get-balance:get balance for device'
@@ -20,7 +22,7 @@ _common_command(){
         'toggle:toggle mute'
         'is-muted:check if muted'
     )
-    cmd="${${_commands[(r)$words[1]:*]%%:*}}"
+    cmd="${${_commands[(r)$words[$((CURRENT - 1))]:*]%%:*}}"
     if (( !  $#cmd )); then
         _describe commands _commands;
     else
@@ -75,29 +77,22 @@ _cards(){
 }
 _card_commands=(
     'list-profiles:list available profiles for a card'
+    'list-profiles-short:list available profiles for a card, short form'
     'get-profile:get active profile for card'
     'set-profile:set profile for a card:_set_profiles'
     )
 
-if [[ -n $words[(r)--(sink-input|source-output)] ]]; then
+if [[ -n $words[(r)*(sink-input|source-output)] ]]; then
     _commands+=(
         'move:Move device'
         )
 fi
 
-if [[ $words[(r)-(d|-device)] == -(d|-device) ]]; then
-    _commands+=(
+[[ $words[(r)-(d|-device)] == -(d|-device) ]] && _commands+=(
         'defaults:list default devices (default command)'
-        'set-default:set default devices'
-        )
-fi
-if [[ $words[(r)-(c|-card)] == -(c|-card) ]]; then
-    _commands+=(
-        'list-profiles:list available profiles for a card'
-        'get-profile:get active profile for card'
-        'set-profile:set profile for a card:_set_profiles'
-        )
-fi
+        'set-default:set default devices')
+
+[[ $words[(r)-(c|-card)] == -(c|-card) ]] && _commands+=( "$_card_commands[@]" )
 
 if [[ $words[$((CURRENT - 1))] == move ]]; then
     for f in ${(f)"$(_call_program sink_tag "$service --sink list-short")"}; do
@@ -108,7 +103,7 @@ elif [[ $words[$((CURRENT - 1))] == set-profile ]]; then
     _set_profiles
 else
     _arguments -C \
-        '::commoncommands:_common_command' \
+        '::common commands:_common_command' \
         '(-c --card -d --device)'{-d,--device}'[Select Device]:devices:_devices' \
         - '(help)' \
             {-h,--help}'[display this help and exit]' \

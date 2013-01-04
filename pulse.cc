@@ -151,11 +151,11 @@ Card* PulseClient::GetCard(const uint32_t& index) {
 
 Card* PulseClient::GetCard(const string& name) {
   long val;
-  vector<Card> res;
+  vector<Card*> res;
   if (xstrtol(name.c_str(), &val) == 0) return GetCard(val);
 
   for (Card& card : cards_) {
-    if (card.name_.find(name) != string::npos) res.push_back(card);
+    if (card.name_.find(name) != string::npos) res.push_back(&card);
   }
 
   switch (res.size()) {
@@ -165,9 +165,10 @@ Card* PulseClient::GetCard(const string& name) {
     break;
   default:
     warnx("warning: ambiguous result for '%s', using '%s'",
-        name.c_str(), res[0].name_.c_str());
+        name.c_str(), res[0]->name_.c_str());
   }
-  return &res[0];
+
+  return res[0];
 }
 
 Card* PulseClient::GetCard(const Device& device) {
@@ -187,11 +188,11 @@ Device* PulseClient::get_device(vector<Device>& devices,
 
 Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
   long val;
-  vector<Device> res;
+  vector<Device*> res;
   if (xstrtol(name.c_str(), &val) == 0) return get_device(devices, val);
 
   for (Device& device : devices) {
-    if (device.name_.find(name) != string::npos) res.push_back(device);
+    if (device.name_.find(name) != string::npos) res.push_back(&device);
   }
 
   switch (res.size()) {
@@ -201,10 +202,10 @@ Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
     break;
   default:
     warnx("warning: ambiguous result for '%s', using '%s'",
-        name.c_str(), res[0].name_.c_str());
+        name.c_str(), res[0]->name_.c_str());
   }
 
-  return &res[0];
+  return res[0];
 }
 
 Device* PulseClient::GetDevice(const uint32_t& index, enum DeviceType type) {

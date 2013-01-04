@@ -1,4 +1,4 @@
-CXX = g++ -std=c++11
+CXX := $(CXX) -std=c++11
 
 base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g
 base_LIBS = -lm

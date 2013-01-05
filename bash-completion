@@ -83,6 +83,22 @@ _ponymix() {
       COMPREPLY=($(compgen -W '${verbs[*]}' -- "$cur"))
       ;;
   esac
+  [[ $COMPREPLY ]] && return 0
+
+  case $verb in
+    move)
+      if [[ $devtype = sink?(-input) ]]; then
+        while IFS=$'\t' read _ dev idx _; do
+          devices+=("$dev" "$idx")
+        done < <(\ponymix --sink list-short 2>/dev/null)
+      elif [[ $devtype = source?(-output) ]]; then
+        while IFS=$'\t' read _ dev idx _; do
+          devices+=("$dev" "$idx")
+        done < <(\ponymix --source list-short 2>/dev/null)
+      fi
+      ;;
+  esac
+  [[ $devices ]] && COMPREPLY=($(compgen -W '${devices[*]}' -- "$cur"))
 
   return 0
 }

@@ -54,13 +54,15 @@ _ponymix() {
   case $prev in
     --card|-c)
       mapfile -t devices < <(\ponymix list-cards-short 2>/dev/null)
-      COMPREPLY=($(compgen -W '${devices[*]}' -- "$cur"))
+      local IFS=$'\n'
+      COMPREPLY=($(compgen -W '$(printf "%s\n" "${devices[@]//\ /\\ }")' -- "$cur"))
       ;;
     --device|-d)
       while IFS=$'\t' read _ dev idx _; do
         devices+=("$dev" "$idx")
       done < <(\ponymix "--${devtype:-sink}" list-short 2>/dev/null)
-      COMPREPLY=($(compgen -W '${devices[*]}' -- "$cur"))
+      local IFS=$'\n'
+      COMPREPLY=($(compgen -W '$(printf "%s\n" "${devices[@]//\ /\\ }")' -- "$cur"))
       ;;
     --devtype|-t)
       COMPREPLY=($(compgen -W '$types' -- "$cur"))
@@ -96,9 +98,12 @@ _ponymix() {
           devices+=("$dev" "$idx")
         done < <(\ponymix --source list-short 2>/dev/null)
       fi
+      if [[ $devices ]]; then
+        local IFS=$'\n'
+        COMPREPLY=($(compgen -W '$(printf "%s\n" "${devices[@]//\ /\\ }")' -- "$cur"))
+      fi
       ;;
   esac
-  [[ $devices ]] && COMPREPLY=($(compgen -W '${devices[*]}' -- "$cur"))
 
   return 0
 }

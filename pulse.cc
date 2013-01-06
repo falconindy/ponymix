@@ -93,7 +93,6 @@ static int xstrtol(const char *str, long *out) {
   return 0;
 }
 
-
 }  // anonymous namespace
 
 PulseClient::PulseClient(string client_name) :
@@ -152,23 +151,11 @@ Card* PulseClient::GetCard(const uint32_t& index) {
 Card* PulseClient::GetCard(const string& name) {
   long val;
   vector<Card*> res;
-  if (xstrtol(name.c_str(), &val) == 0) return GetCard(val);
-
-  for (Card& card : cards_) {
-    if (card.name_.find(name) != string::npos) res.push_back(&card);
+  if (xstrtol(name.c_str(), &val) == 0) {
+    return GetCard(val);
+  } else {
+    return find_fuzzy(cards_, name);
   }
-
-  switch (res.size()) {
-  case 0:
-    return nullptr;
-  case 1:
-    break;
-  default:
-    warnx("warning: ambiguous result for '%s', using '%s'",
-        name.c_str(), res[0]->name_.c_str());
-  }
-
-  return res[0];
 }
 
 Card* PulseClient::GetCard(const Device& device) {
@@ -189,23 +176,11 @@ Device* PulseClient::get_device(vector<Device>& devices,
 Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
   long val;
   vector<Device*> res;
-  if (xstrtol(name.c_str(), &val) == 0) return get_device(devices, val);
-
-  for (Device& device : devices) {
-    if (device.name_.find(name) != string::npos) res.push_back(&device);
+  if (xstrtol(name.c_str(), &val) == 0) {
+    return get_device(devices, val);
+  } else {
+    return find_fuzzy(devices, name);
   }
-
-  switch (res.size()) {
-  case 0:
-    return nullptr;
-  case 1:
-    break;
-  default:
-    warnx("warning: ambiguous result for '%s', using '%s'",
-        name.c_str(), res[0]->name_.c_str());
-  }
-
-  return res[0];
 }
 
 Device* PulseClient::GetDevice(const uint32_t& index, enum DeviceType type) {
@@ -287,6 +262,26 @@ void PulseClient::mainloop_iterate(pa_operation* op) {
   while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
     pa_mainloop_iterate(mainloop_, 1, &r);
   }
+}
+
+template<class T>
+T* PulseClient::find_fuzzy(vector<T> haystack, const string& needle) {
+  vector<T*> res;
+
+  for (T& item : haystack) {
+    if (item.name_.find(needle) != string::npos) res.push_back(&item);
+  }
+
+  switch (res.size()) {
+  case 0:
+    return nullptr;
+  case 1:
+    break;
+  default:
+    warnx("warning: ambiguous result for '%s', using '%s'",
+        needle.c_str(), res[0]->name_.c_str());
+  }
+  return res[0];
 }
 
 void PulseClient::populate_cards() {

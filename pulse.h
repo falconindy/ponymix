@@ -221,6 +221,7 @@ class PulseClient {
 
  private:
   void mainloop_iterate(pa_operation* op);
+  template<class T> T* find_fuzzy(vector<T> haystack, const string& needle);
 
   void populate_server_info();
   void populate_cards();

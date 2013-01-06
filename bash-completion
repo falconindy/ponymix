@@ -29,7 +29,7 @@ _ponymix() {
     fi
 
     case $word in
-      --devtype)
+      --devtype|-t)
         # look ahead to next word
         if [[ ${COMP_WORDS[i+1]} ]]; then
           devtype=${COMP_WORDS[i+1]}
@@ -37,6 +37,9 @@ _ponymix() {
         ;;
       --devtype=*)
         devtype=${word#--devtype=}
+        ;;
+      -t*)
+        devtype=${word#-t}
         ;;
       --sink|--output)
         devtype=sink
@@ -53,9 +56,9 @@ _ponymix() {
 
   case $prev in
     --card|-c)
-      mapfile -t devices < <(\ponymix list-cards-short 2>/dev/null)
+      mapfile -t cards < <(\ponymix list-cards-short 2>/dev/null)
       local IFS=$'\n'
-      COMPREPLY=($(compgen -W '$(printf "%s\n" "${devices[@]//\ /\\ }")' -- "$cur"))
+      COMPREPLY=($(compgen -W '$(printf "%s\n" "${cards[@]//\ /\\ }")' -- "$cur"))
       ;;
     --device|-d)
       while IFS=$'\t' read _ dev idx _; do

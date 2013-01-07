@@ -358,7 +358,7 @@ bool PulseClient::SetVolume(Device& device, long volume) {
   int success;
 
   if (device.ops_.SetVolume == nullptr) {
-    warnx("device does not support setting balance.");
+    warnx("device does not support setting volume.");
     return false;
   }
 

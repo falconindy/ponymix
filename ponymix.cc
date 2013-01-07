@@ -335,7 +335,7 @@ static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.SetVolume(*device, device->Volume() + delta)) return 1;
+  if (!ponymix.IncreaseVolume(*device, delta)) return 1;
 
   printf("%d\n", device->Volume());
 
@@ -352,7 +352,7 @@ static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.SetVolume(*device, device->Volume() - delta)) return 1;
+  if (!ponymix.DecreaseVolume(*device, delta)) return 1;
 
   printf("%d\n", device->Volume());
 

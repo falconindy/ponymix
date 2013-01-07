@@ -265,7 +265,7 @@ void PulseClient::mainloop_iterate(pa_operation* op) {
 }
 
 template<class T>
-T* PulseClient::find_fuzzy(vector<T> haystack, const string& needle) {
+T* PulseClient::find_fuzzy(vector<T>& haystack, const string& needle) {
   vector<T*> res;
 
   for (T& item : haystack) {

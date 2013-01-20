@@ -325,7 +325,9 @@ static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
   return 0;
 }
 
-static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
+static int adj_volume(PulseClient& ponymix,
+                      bool (PulseClient::*adjust)(Device&, long int),
+                      char* argv[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
   long delta;
@@ -335,28 +337,20 @@ static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.IncreaseVolume(*device, delta)) return 1;
+  ponymix.SetVolumeRange(0, 100);
+  if (!(ponymix.*adjust)(*device, delta)) return 1;
 
   printf("%d\n", device->Volume());
 
   return 0;
 }
 
+static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
+  return adj_volume(ponymix, &PulseClient::IncreaseVolume, argv);
+}
+
 static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-
-  long delta;
-  try {
-    delta = std::stol(argv[0]);
-  } catch (std::invalid_argument) {
-    errx(1, "error: failed to convert string to integer: %s", argv[0]);
-  }
-
-  if (!ponymix.DecreaseVolume(*device, delta)) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return adj_volume(ponymix, &PulseClient::DecreaseVolume, argv);
 }
 
 static int Mute(PulseClient& ponymix, int, char*[]) {

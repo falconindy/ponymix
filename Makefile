@@ -6,13 +6,19 @@ base_LIBS = -lm
 libpulse_CXXFLAGS = $(shell pkg-config --cflags libpulse)
 libpulse_LIBS = $(shell pkg-config --libs libpulse)
 
+libnotify_CXXFLAGS = $(shell pkg-config --cflags libnotify 2>/dev/null && echo "-DHAVE_NOTIFY")
+libnotify_LIBS = $(shell pkg-config --libs libnotify 2>/dev/null)
+
+
 CXXFLAGS := \
 	$(base_CXXFLAGS) \
+	$(libnotify_CXXFLAGS) \
 	$(libpulse_CXXFLAGS) \
 	$(CXXFLAGS)
 
 LDLIBS := \
 	$(base_LIBS) \
+	$(libnotify_LIBS) \
 	$(libpulse_LIBS)
 
 all: ponymix

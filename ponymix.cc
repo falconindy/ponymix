@@ -56,6 +56,7 @@ static bool opt_listrestrict;
 static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
+static bool opt_notify;
 static Color color;
 
 static const char* type_to_string(enum DeviceType t) {
@@ -534,6 +535,7 @@ bool parse_options(int argc, char** argv) {
     { "card",           required_argument, 0, 'c' },
     { "device",         required_argument, 0, 'd' },
     { "help",           no_argument,       0, 'h' },
+    { "notify",         no_argument,       0, 'N' },
     { "type",           required_argument, 0, 't' },
     { "sink",           no_argument,       0, 0x100 },
     { "output",         no_argument,       0, 0x101 },
@@ -545,7 +547,7 @@ bool parse_options(int argc, char** argv) {
   };
 
   for (;;) {
-    int opt = getopt_long(argc, argv, "c:d:ht:", opts, nullptr);
+    int opt = getopt_long(argc, argv, "c:d:hNt:", opts, nullptr);
     if (opt == -1)
       break;
 
@@ -558,6 +560,9 @@ bool parse_options(int argc, char** argv) {
       break;
     case 'h':
       usage();
+      break;
+    case 'N':
+      opt_notify = true;
       break;
     case 't':
       opt_devtype = string_to_devtype_or_die(optarg);
@@ -605,7 +610,14 @@ int main(int argc, char* argv[]) {
   argv += optind;
 
   try {
+#ifdef HAVE_NOTIFY
+    if (opt_notify) {
+      ponymix.EnableNotifications(new LibnotifyNotifier);
+    } else
+#endif
+    {
     ponymix.EnableNotifications(new CommandLineNotifier);
+    }
   } catch (std::exception e) {
     fprintf(stderr, "failed to enable notifier\n");
   }

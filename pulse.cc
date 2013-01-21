@@ -82,9 +82,9 @@ static int volume_as_percent(const pa_cvolume* cvol) {
 }
 
 static int xstrtol(const char *str, long *out) {
-  char *end = NULL;
+  char *end = nullptr;
 
-  if (str == NULL || *str == '\0') return -1;
+  if (str == nullptr || *str == '\0') return -1;
   errno = 0;
 
   *out = strtol(str, &end, 10);

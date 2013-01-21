@@ -545,7 +545,7 @@ bool parse_options(int argc, char** argv) {
   };
 
   for (;;) {
-    int opt = getopt_long(argc, argv, "c:d:ht:", opts, NULL);
+    int opt = getopt_long(argc, argv, "c:d:ht:", opts, nullptr);
     if (opt == -1)
       break;
 

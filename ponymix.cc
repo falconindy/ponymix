@@ -278,11 +278,7 @@ static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.SetVolume(*device, volume)) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return !ponymix.SetVolume(*device, volume);
 }
 
 static int GetBalance(PulseClient& ponymix, int, char*[]) {
@@ -301,11 +297,7 @@ static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.SetBalance(*device, balance)) return 1;
-
-  printf("%d\n", device->Balance());
-
-  return 0;
+  return !ponymix.SetBalance(*device, balance);
 }
 
 static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
@@ -318,11 +310,7 @@ static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  if (!ponymix.SetBalance(*device, device->Balance() + balance)) return 1;
-
-  printf("%d\n", device->Balance());
-
-  return 0;
+  return !ponymix.SetBalance(*device, device->Balance() + balance);
 }
 
 static int adj_volume(PulseClient& ponymix,
@@ -338,11 +326,7 @@ static int adj_volume(PulseClient& ponymix,
   }
 
   ponymix.SetVolumeRange(0, 100);
-  if (!(ponymix.*adjust)(*device, delta)) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return !(ponymix.*adjust)(*device, delta);
 }
 
 static int IncreaseVolume(PulseClient& ponymix, int, char* argv[]) {
@@ -356,31 +340,19 @@ static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
 static int Mute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
-  if (!ponymix.SetMute(*device, true)) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return !ponymix.SetMute(*device, true);
 }
 
 static int Unmute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
-  if (!ponymix.SetMute(*device, false)) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return !ponymix.SetMute(*device, false);
 }
 
 static int ToggleMute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
 
-  if (!ponymix.SetMute(*device, !ponymix.IsMuted(*device))) return 1;
-
-  printf("%d\n", device->Volume());
-
-  return 0;
+  return !ponymix.SetMute(*device, !ponymix.IsMuted(*device));
 }
 
 static int IsMuted(PulseClient& ponymix, int, char*[]) {
@@ -631,6 +603,12 @@ int main(int argc, char* argv[]) {
   if (!parse_options(argc, argv)) return 1;
   argc -= optind;
   argv += optind;
+
+  try {
+    ponymix.EnableNotifications(new CommandLineNotifier);
+  } catch (std::exception e) {
+    fprintf(stderr, "failed to enable notifier\n");
+  }
 
   return CommandDispatch(ponymix, argc, argv);
 }

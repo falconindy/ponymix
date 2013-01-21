@@ -18,7 +18,7 @@ LDLIBS := \
 all: ponymix
 
 ponymix: ponymix.cc pulse.o
-pulse.o: pulse.cc pulse.h
+pulse.o: pulse.cc pulse.h notify.h
 
 install: ponymix
 	install -Dm755 ponymix $(DESTDIR)/usr/bin/ponymix

@@ -349,7 +349,13 @@ bool PulseClient::SetMute(Device& device, bool mute) {
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  if (success) device.mute_ = mute;
+  if (success) {
+    device.mute_ = mute;
+    if (notifier_.get()) {
+      notifier_->Notify(mute ? NOTIFY_MUTE : NOTIFY_UNMUTE,
+                        device.volume_percent_, mute);
+    }
+  }
 
   return success;
 }
@@ -372,7 +378,12 @@ bool PulseClient::SetVolume(Device& device, long volume) {
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  if (success) device.update_volume(*cvol);
+  if (success) {
+    device.update_volume(*cvol);
+    if (notifier_.get()) notifier_->Notify(NOTIFY_VOLUME,
+                                           device.volume_percent_,
+                                           device.mute_);
+  }
 
   return success;
 }
@@ -405,7 +416,12 @@ bool PulseClient::SetBalance(Device& device, long balance) {
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  if (success) device.update_volume(*cvol);
+  if (success) {
+    device.update_volume(*cvol);
+    if (notifier_.get()) notifier_->Notify(NOTIFY_BALANCE,
+                                           device.balance_,
+                                           false);
+  }
 
   return success;
 }
@@ -542,6 +558,10 @@ void PulseClient::remove_device(Device& device) {
         devlist->begin(), devlist->end(),
         [=](Device& d) { return d.index_ == device.index_; }),
       devlist->end());
+}
+
+void PulseClient::EnableNotifications(Notifier* notifier) {
+  notifier_.reset(notifier);
 }
 
 //

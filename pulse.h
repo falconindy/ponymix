@@ -1,5 +1,7 @@
 #pragma once
 
+#include "notify.h"
+
 // C
 #include <string.h>
 
@@ -219,6 +221,8 @@ class PulseClient {
     balance_range_ = { min, max };
   }
 
+  void EnableNotifications(Notifier* notifier);
+
  private:
   void mainloop_iterate(pa_operation* op);
   template<class T> T* find_fuzzy(vector<T>& haystack, const string& needle);
@@ -244,6 +248,7 @@ class PulseClient {
   ServerInfo defaults_;
   Range<int> volume_range_;
   Range<int> balance_range_;
+  unique_ptr<Notifier> notifier_;
 };
 
 // vim: set et ts=2 sw=2:

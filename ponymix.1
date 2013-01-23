@@ -14,6 +14,10 @@ is used. Cards can be specified by name or numeric index.
 .IP "\fB\-d\fR, \fB\-\-device\fR \fIDEVICE\fR"
 Specify a device other than the default. Devices can be specified by name
 or numeric index.
+.IP "\fB\-N\fR, \fB\-\-notify\fR"
+Create a libnotify notification for volume change events instead of printing
+the new volume to standard output. Requires compile time support for libnotify.
+Without support, this flag is a no-op.
 .IP "\fB\-t\fR, \fB\-\-devtype\fR \fITYPE\fR"
 Specify a device type to examine, usually in conjunction with the \fB--device\fR
 flag. \fITYPE\fR must be one of \fIsink\fR, \fIsource\fR, \fIsink-input\fR, or

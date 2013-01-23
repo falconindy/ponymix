@@ -9,7 +9,7 @@ in_array() {
 
 _ponymix() {
   local flags='-h --help -c --card -d --device -t --devtype
-               --source --input --sink --output
+               -N --notify --source --input --sink --output
                --sink-input --source-output'
   local types='sink sink-input source source-output'
   local verbs=(help defaults set-default list list-short

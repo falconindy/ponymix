@@ -421,7 +421,7 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
 
 static const Command& string_to_command(const char* str) {
   static std::map<string, const Command> actionmap = {
-    // command name       function    arg min  arg max
+    // command name            function         arg min  arg max
     { "defaults",            { ShowDefaults,        { 0, 0 } } },
     { "list",                { List,                { 0, 0 } } },
     { "list-short",          { ListShort,           { 0, 0 } } },
@@ -462,6 +462,7 @@ static void usage() {
         " -c, --card CARD         target card (index or name)\n"
         " -d, --device DEVICE     target device (index or name)\n"
         " -t, --devtype TYPE      device type\n"
+        " -N, --notify            use libnotify to announce volume changes\n"
         "     --source            alias to -t source\n"
         "     --input             alais to -t source\n"
         "     --sink              alias to -t sink\n"

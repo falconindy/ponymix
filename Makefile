@@ -34,3 +34,7 @@ install: ponymix
 
 clean:
 	$(RM) ponymix pulse.o
+
+V=$(shell if test -d .git; then git describe; fi)
+dist:
+	git archive --format=tar --prefix=ponymix-$(V)/ HEAD | gzip -9 > ponymix-$(V).tar.gz

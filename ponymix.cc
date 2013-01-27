@@ -617,7 +617,7 @@ int main(int argc, char* argv[]) {
     } else
 #endif
     {
-    ponymix.EnableNotifications(new CommandLineNotifier);
+      ponymix.EnableNotifications(new CommandLineNotifier);
     }
   } catch (std::exception e) {
     fprintf(stderr, "failed to enable notifier\n");

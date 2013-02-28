@@ -4,7 +4,6 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <map>
 #include <stdexcept>
 

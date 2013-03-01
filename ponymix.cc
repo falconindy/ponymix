@@ -418,7 +418,9 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
   return !ponymix.Kill(*device);
 }
 
-static const Command& string_to_command(const char* str) {
+
+static const std::pair<const string, const Command>& string_to_command(
+    const char* str) {
   static std::map<string, const Command> actionmap = {
     // command name            function         arg min  arg max
     { "defaults",            { ShowDefaults,        { 0, 0 } } },
@@ -446,11 +448,29 @@ static const Command& string_to_command(const char* str) {
     { "kill",                { Kill,                { 0, 0 } } }
   };
 
-  try {
-    return actionmap.at(str);
-  } catch(std::out_of_range) {
-    errx(1, "error: Invalid action specified: %s", str);
+  const auto match = actionmap.lower_bound(str);
+  for (auto iter = match; iter != actionmap.end(); iter++) {
+    // Match on prefix, ensure only a single match
+    if (iter->first.find(str) != 0) {
+      if (iter == match) {
+        errx(1, "error: Invalid action specified: %s", str);
+      } else {
+        break;
+      }
+    }
+    if (iter != match) {
+      auto i = match;
+      string cand = i->first;
+      i++;
+      while (i->first.find(str) == 0) {
+        cand += ", " + i->first;
+        i++;
+      }
+      errx(1, "error: Ambiguous action specified: %s (%s)", str, cand.c_str());
+    }
   }
+
+  return *match;
 }
 
 static void usage() {
@@ -524,10 +544,12 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
     return 0;
   }
 
-  const Command& cmd = string_to_command(opt_action);
-  if (cmd.args.InRange(argc) != 0) error_wrong_args(cmd, opt_action);
+  const auto& cmd = string_to_command(opt_action);
+  if (cmd.second.args.InRange(argc) != 0) {
+    error_wrong_args(cmd.second, cmd.first.c_str());
+  }
 
-  return cmd.fn(ponymix, argc, argv);
+  return cmd.second.fn(ponymix, argc, argv);
 }
 
 bool parse_options(int argc, char** argv) {

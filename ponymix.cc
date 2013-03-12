@@ -449,8 +449,14 @@ static const std::pair<const string, const Command>& string_to_command(
   };
 
   const auto match = actionmap.lower_bound(str);
+
+  // Check for exact match
+  if (match->first == str) {
+    return *match;
+  }
+
+  // Match on prefix, ensure only a single match
   for (auto iter = match; iter != actionmap.end(); iter++) {
-    // Match on prefix, ensure only a single match
     if (iter->first.find(str) != 0) {
       if (iter == match) {
         errx(1, "error: Invalid action specified: %s", str);

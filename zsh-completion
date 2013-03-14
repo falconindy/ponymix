@@ -107,6 +107,8 @@ else
         '(-c --card -d --device)'{-d,--device}'[Select Device]:devices:_devices' \
         - '(help)' \
             {-h,--help}'[display this help and exit]' \
+        - '(version)' \
+            {-V,--version}'[display program version and exit]' \
         - '(sink)' \
             '--sink[alias to type sink]' \
             '--output[alias to type sink]' \

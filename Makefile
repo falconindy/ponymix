@@ -1,6 +1,13 @@
+V=1
+VDEVEL=$(shell test -d .git && git describe 2>/dev/null)
+
+ifneq "$(VDEVEL)" ""
+V=$(VDEVEL)
+endif
+
 CXX := $(CXX) -std=c++11
 
-base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g
+base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g -DPONYMIX_VERSION=\"$(V)\"
 base_LIBS = -lm
 
 libpulse_CXXFLAGS = $(shell pkg-config --cflags libpulse)
@@ -35,6 +42,5 @@ install: ponymix
 clean:
 	$(RM) ponymix pulse.o
 
-V=$(shell if test -d .git; then git describe; fi)
 dist:
 	git archive --format=tar --prefix=ponymix-$(V)/ HEAD | gzip -9 > ponymix-$(V).tar.gz

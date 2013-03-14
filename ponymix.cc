@@ -473,10 +473,16 @@ static const std::pair<const string, const Command>& string_to_command(
   return *match;
 }
 
+static void version() {
+  fputs("ponymix v" PONYMIX_VERSION "\n", stdout);
+  exit(EXIT_SUCCESS);
+}
+
 static void usage() {
   printf("usage: %s [options] <command>...\n", program_invocation_short_name);
   fputs("\nOptions:\n"
-        " -h, --help              display this help and exit\n\n"
+        " -h, --help              display this help and exit\n"
+        " -V, --version           display program version and exit\n\n"
 
         " -c, --card CARD         target card (index or name)\n"
         " -d, --device DEVICE     target device (index or name)\n"
@@ -559,6 +565,7 @@ bool parse_options(int argc, char** argv) {
     { "help",           no_argument,       0, 'h' },
     { "notify",         no_argument,       0, 'N' },
     { "type",           required_argument, 0, 't' },
+    { "version",        no_argument,       0, 'V' },
     { "sink",           no_argument,       0, 0x100 },
     { "output",         no_argument,       0, 0x101 },
     { "source",         no_argument,       0, 0x102 },
@@ -569,7 +576,7 @@ bool parse_options(int argc, char** argv) {
   };
 
   for (;;) {
-    int opt = getopt_long(argc, argv, "c:d:hNt:", opts, nullptr);
+    int opt = getopt_long(argc, argv, "c:d:hNt:V", opts, nullptr);
     if (opt == -1)
       break;
 
@@ -589,6 +596,9 @@ bool parse_options(int argc, char** argv) {
     case 't':
       opt_devtype = string_to_devtype_or_die(optarg);
       opt_listrestrict = true;
+      break;
+    case 'V':
+      version();
       break;
     case 0x100:
     case 0x101:

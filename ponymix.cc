@@ -184,22 +184,14 @@ static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
 
 static int list_devices(PulseClient& ponymix, bool shirt) {
   if (opt_listrestrict) {
-    const auto& devices = ponymix.GetDevices(opt_devtype);
-    for (const auto& d : devices) Print(d, shirt);
+    for (const auto& d : ponymix.GetDevices(opt_devtype)) Print(d, shirt);
     return 0;
   }
 
-  const auto& sinks = ponymix.GetSinks();
-  for (const auto& s : sinks) Print(s, shirt);
-
-  const auto& sources = ponymix.GetSources();
-  for (const auto& s : sources) Print(s, shirt);
-
-  const auto& sinkinputs = ponymix.GetSinkInputs();
-  for (const auto& s : sinkinputs) Print(s, shirt);
-
-  const auto& sourceoutputs = ponymix.GetSourceOutputs();
-  for (const auto& s : sourceoutputs) Print(s, shirt);
+  for (const auto& s : ponymix.GetSinks()) Print(s, shirt);
+  for (const auto& s : ponymix.GetSources()) Print(s, shirt);
+  for (const auto& s : ponymix.GetSinkInputs()) Print(s, shirt);
+  for (const auto& s : ponymix.GetSourceOutputs()) Print(s, shirt);
 
   return 0;
 }

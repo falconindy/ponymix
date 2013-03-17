@@ -81,7 +81,7 @@ class LibnotifyNotifier : public Notifier {
     notify_notification_set_urgency(notification, NOTIFY_URGENCY_NORMAL);
     notify_notification_set_hint_int32(notification, "value", vol);
     notify_notification_set_hint_string(notification, "synchronous", "volume");
-    notify_notification_show(notification, NULL);
+    notify_notification_show(notification, nullptr);
     g_object_unref(G_OBJECT(notification));
   }
 };

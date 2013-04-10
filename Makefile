@@ -1,6 +1,8 @@
+VERSION = $(shell git describe)
+
 CXX := $(CXX) -std=c++11
 
-base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g
+base_CXXFLAGS = -Wall -Wextra -pedantic -O2 -g -DPONYMIX_VERSION=\"${VERSION}\"
 base_LIBS = -lm
 
 libpulse_CXXFLAGS = $(shell pkg-config --cflags libpulse)

@@ -482,7 +482,8 @@ static const std::pair<const string, const Command>& string_to_command(
 static void usage() {
   printf("usage: %s [options] <command>...\n", program_invocation_short_name);
   fputs("\nOptions:\n"
-        " -h, --help              display this help and exit\n\n"
+        " -h, --help              display this help and exit\n"
+        " -v, --version           display version\n\n"
 
         " -c, --card CARD         target card (index or name)\n"
         " -d, --device DEVICE     target device (index or name)\n"
@@ -563,6 +564,7 @@ bool parse_options(int argc, char** argv) {
     { "card",           required_argument, 0, 'c' },
     { "device",         required_argument, 0, 'd' },
     { "help",           no_argument,       0, 'h' },
+    { "version",        no_argument,       0, 'v' },
     { "notify",         no_argument,       0, 'N' },
     { "type",           required_argument, 0, 't' },
     { "sink",           no_argument,       0, 0x100 },
@@ -575,7 +577,7 @@ bool parse_options(int argc, char** argv) {
   };
 
   for (;;) {
-    int opt = getopt_long(argc, argv, "c:d:hNt:", opts, nullptr);
+    int opt = getopt_long(argc, argv, "c:d:hvNt:", opts, nullptr);
     if (opt == -1)
       break;
 
@@ -589,6 +591,9 @@ bool parse_options(int argc, char** argv) {
     case 'h':
       usage();
       break;
+    case 'v':
+      printf("%s %s\n", program_invocation_short_name, PONYMIX_VERSION);
+      return 0;
     case 'N':
       opt_notify = true;
       break;

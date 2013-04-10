@@ -317,7 +317,9 @@ static int adj_volume(PulseClient& ponymix,
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
-  ponymix.SetVolumeRange(0, 100);
+  // Allow setting the volume over 100, but don't "clip" the level back down to
+  // 100 on adjustment.
+  ponymix.SetVolumeRange(0, std::max(device->Volume(), 100));
   return !(ponymix.*adjust)(*device, delta);
 }
 

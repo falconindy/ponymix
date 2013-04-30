@@ -14,6 +14,10 @@ is used. Cards can be specified by name or numeric index.
 .IP "\fB\-d\fR, \fB\-\-device\fR \fIDEVICE\fR"
 Specify a device other than the default. Devices can be specified by name
 or numeric index.
+.IP "\fB\-\-max\-volume\fR \fIVALUE\fR"
+Override the maximum volume ponymix will allow. This is baked in to be 100
+using the \fBincrease\fR and \fBdecrease\fR methods, and 150 via
+\fBset-volume\fR.
 .IP "\fB\-N\fR, \fB\-\-notify\fR"
 Create a libnotify notification for volume change events instead of printing
 the new volume to standard output. Requires compile time support for libnotify.

@@ -56,7 +56,20 @@ static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
 static bool opt_notify;
+static long opt_maxvolume;
 static Color color;
+
+static int xstrtol(const char *str, long *out) {
+  char *end = nullptr;
+
+  if (str == nullptr || *str == '\0') return -1;
+  errno = 0;
+
+  *out = strtol(str, &end, 10);
+  if (errno || str == end || (end && *end)) return -1;
+
+  return 0;
+}
 
 static const char* type_to_string(enum DeviceType t) {
   switch (t) {
@@ -319,7 +332,7 @@ static int adj_volume(PulseClient& ponymix,
 
   // Allow setting the volume over 100, but don't "clip" the level back down to
   // 100 on adjustment.
-  ponymix.SetVolumeRange(0, std::max(device->Volume(), 100));
+  ponymix.SetVolumeRange(0, std::max(device->Volume(), (int)opt_maxvolume));
   return !(ponymix.*adjust)(*device, delta);
 }
 
@@ -488,6 +501,7 @@ static void usage() {
         " -d, --device DEVICE     target device (index or name)\n"
         " -t, --devtype TYPE      device type\n"
         " -N, --notify            use libnotify to announce volume changes\n"
+        "     --max-volume VALUE  use VALUE as max volume\n"
         "     --source            alias to -t source\n"
         "     --input             alais to -t source\n"
         "     --sink              alias to -t sink\n"
@@ -572,6 +586,7 @@ bool parse_options(int argc, char** argv) {
     { "input",          no_argument,       0, 0x103 },
     { "sink-input",     no_argument,       0, 0x104 },
     { "source-output",  no_argument,       0, 0x105 },
+    { "max-volume",     required_argument, 0, 0x106 },
     { 0, 0, 0, 0 },
   };
 
@@ -618,6 +633,13 @@ bool parse_options(int argc, char** argv) {
       opt_devtype = DEVTYPE_SOURCE_OUTPUT;
       opt_listrestrict = true;
       break;
+    case 0x106:
+      if (xstrtol(optarg, &opt_maxvolume) < 0) {
+        fprintf(stderr, "error: invalid max volume: %s: must be a positive integer\n",
+            optarg);
+        return false;
+      }
+      break;
     default:
       return false;
     }
@@ -636,6 +658,7 @@ int main(int argc, char* argv[]) {
   opt_action = "defaults";
   opt_devtype = DEVTYPE_SINK;
   opt_device = defaults.sink.c_str();
+  opt_maxvolume = 100;
 
   if (!parse_options(argc, argv)) return 1;
   argc -= optind;

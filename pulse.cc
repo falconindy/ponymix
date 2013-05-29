@@ -556,7 +556,7 @@ void PulseClient::remove_device(Device& device) {
   devlist->erase(
       std::remove_if(
         devlist->begin(), devlist->end(),
-        [=](Device& d) { return d.index_ == device.index_; }),
+        [&device](Device& d) { return d.index_ == device.index_; }),
       devlist->end());
 }
 

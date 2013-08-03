@@ -88,7 +88,7 @@ static const char* type_to_string(enum DeviceType t) {
 }
 
 static enum DeviceType string_to_devtype_or_die(const char* str) {
-  static std::map<string, enum DeviceType> typemap = {
+  static std::map<string, enum DeviceType> typemap{
     { "sink",           DEVTYPE_SINK          },
     { "source",         DEVTYPE_SOURCE        },
     { "sink-input",     DEVTYPE_SINK_INPUT    },
@@ -428,7 +428,7 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
 
 static const std::pair<const string, const Command>& string_to_command(
     const char* str) {
-  static std::map<string, const Command> actionmap = {
+  static std::map<string, const Command> actionmap{
     // command name            function         arg min  arg max
     { "defaults",            { ShowDefaults,        { 0, 0 } } },
     { "list",                { List,                { 0, 0 } } },
@@ -573,7 +573,7 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
 }
 
 bool parse_options(int argc, char** argv) {
-  static const struct option opts[] = {
+  static const struct option opts[]{
     { "card",           required_argument, 0, 'c' },
     { "device",         required_argument, 0, 'd' },
     { "help",           no_argument,       0, 'h' },

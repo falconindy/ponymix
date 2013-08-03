@@ -17,12 +17,12 @@
 
 namespace {
 static void connect_state_cb(pa_context* context, void* raw) {
-  enum pa_context_state *state = (enum pa_context_state*)raw;
+  enum pa_context_state *state = static_cast<enum pa_context_state*>(raw);
   *state = pa_context_get_state(context);
 }
 
 static void success_cb(pa_context* context, int success, void* raw) {
-  int *r = (int*)raw;
+  int *r = static_cast<int*>(raw);
   *r = success;
   if (!success) {
     fprintf(stderr,
@@ -42,7 +42,7 @@ static void card_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    vector<Card>* cards = (vector<Card>*)raw;
+    vector<Card>* cards = static_cast<vector<Card>*>(raw);
     cards->push_back(info);
   }
 }
@@ -59,7 +59,7 @@ static void device_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    vector<Device>* devices_ = (vector<Device>*)raw;
+    vector<Device>* devices_ = static_cast<vector<Device>*>(raw);
     devices_->push_back(info);
   }
 }
@@ -67,14 +67,14 @@ static void device_info_cb(pa_context* context,
 static void server_info_cb(pa_context* context __attribute__((unused)),
                            const pa_server_info* i,
                            void* raw) {
-  ServerInfo* defaults = (ServerInfo*)raw;
+  ServerInfo* defaults = static_cast<ServerInfo*>(raw);
   defaults->sink = i->default_sink_name;
   defaults->source = i->default_source_name;
 }
 
 static pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
   return pa_cvolume_set(cvol, cvol->channels,
-      fmax((double)(value + .5) * PA_VOLUME_NORM / 100, 0));
+      fmax(static_cast<double>(value + .5) * PA_VOLUME_NORM / 100, 0));
 }
 
 static int volume_as_percent(const pa_cvolume* cvol) {
@@ -288,7 +288,7 @@ void PulseClient::populate_cards() {
   cards_.clear();
   pa_operation* op = pa_context_get_card_info_list(context_,
                                                    card_info_cb,
-                                                   (void*)&cards_);
+                                                   static_cast<void*>(&cards_));
   mainloop_iterate(op);
   pa_operation_unref(op);
 }
@@ -303,32 +303,28 @@ void PulseClient::populate_server_info() {
 
 void PulseClient::populate_sinks() {
   sinks_.clear();
-  pa_operation* op = pa_context_get_sink_info_list(context_,
-                                                   device_info_cb,
-                                                   (void*)&sinks_);
+  pa_operation* op = pa_context_get_sink_info_list(
+      context_, device_info_cb, static_cast<void*>(&sinks_));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
   sink_inputs_.clear();
-  op = pa_context_get_sink_input_info_list(context_,
-                                           device_info_cb,
-                                           (void*)&sink_inputs_);
+  op = pa_context_get_sink_input_info_list(
+      context_, device_info_cb, static_cast<void*>(&sink_inputs_));
   mainloop_iterate(op);
   pa_operation_unref(op);
 }
 
 void PulseClient::populate_sources() {
   sources_.clear();
-  pa_operation* op = pa_context_get_source_info_list(context_,
-                                                     device_info_cb,
-                                                     (void*)&sources_);
+  pa_operation* op = pa_context_get_source_info_list(
+      context_, device_info_cb, static_cast<void*>(&sources_));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
   source_outputs_.clear();
-  op = pa_context_get_source_output_info_list(context_,
-                                              device_info_cb,
-                                              (void*)&source_outputs_);
+  op = pa_context_get_source_output_info_list(
+      context_, device_info_cb, static_cast<void*>(&source_outputs_));
   mainloop_iterate(op);
   pa_operation_unref(op);
 }

@@ -332,7 +332,7 @@ static int adj_volume(PulseClient& ponymix,
 
   // Allow setting the volume over 100, but don't "clip" the level back down to
   // 100 on adjustment.
-  ponymix.SetVolumeRange(0, std::max(device->Volume(), (int)opt_maxvolume));
+  ponymix.SetVolumeRange(0, std::max(device->Volume(), static_cast<int>(opt_maxvolume)));
   return !(ponymix.*adjust)(*device, delta);
 }
 

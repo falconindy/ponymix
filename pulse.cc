@@ -150,7 +150,6 @@ Card* PulseClient::GetCard(const uint32_t& index) {
 
 Card* PulseClient::GetCard(const string& name) {
   long val;
-  vector<Card*> res;
   if (xstrtol(name.c_str(), &val) == 0) {
     return GetCard(val);
   } else {
@@ -175,7 +174,6 @@ Device* PulseClient::get_device(vector<Device>& devices,
 
 Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
   long val;
-  vector<Device*> res;
   if (xstrtol(name.c_str(), &val) == 0) {
     return get_device(devices, val);
   } else {

@@ -98,7 +98,8 @@ static int xstrtol(const char *str, long *out) {
 PulseClient::PulseClient(string client_name) :
     client_name_(client_name),
     volume_range_(0, 150),
-    balance_range_(-100, 100) {
+    balance_range_(-100, 100),
+    notifier_(new NullNotifier) {
   enum pa_context_state state = PA_CONTEXT_CONNECTING;
 
   pa_proplist* proplist = pa_proplist_new();
@@ -345,10 +346,8 @@ bool PulseClient::SetMute(Device& device, bool mute) {
 
   if (success) {
     device.mute_ = mute;
-    if (notifier_.get()) {
-      notifier_->Notify(mute ? NOTIFY_MUTE : NOTIFY_UNMUTE,
-                        device.volume_percent_, mute);
-    }
+    notifier_->Notify(mute ? NOTIFY_MUTE : NOTIFY_UNMUTE,
+                      device.volume_percent_, mute);
   }
 
   return success;
@@ -374,9 +373,7 @@ bool PulseClient::SetVolume(Device& device, long volume) {
 
   if (success) {
     device.update_volume(*cvol);
-    if (notifier_.get()) notifier_->Notify(NOTIFY_VOLUME,
-                                           device.volume_percent_,
-                                           device.mute_);
+    notifier_->Notify(NOTIFY_VOLUME, device.volume_percent_, device.mute_);
   }
 
   return success;
@@ -412,9 +409,7 @@ bool PulseClient::SetBalance(Device& device, long balance) {
 
   if (success) {
     device.update_volume(*cvol);
-    if (notifier_.get()) notifier_->Notify(NOTIFY_BALANCE,
-                                           device.balance_,
-                                           false);
+    notifier_->Notify(NOTIFY_BALANCE, device.balance_, false);
   }
 
   return success;

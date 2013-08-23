@@ -23,6 +23,12 @@ class Notifier {
   bool initialized_;
 };
 
+class NullNotifier : public Notifier {
+ public:
+  virtual ~NullNotifier() {}
+  virtual void Notify(enum NotificationType, long, bool) {}
+};
+
 class CommandLineNotifier : public Notifier {
  public:
   virtual ~CommandLineNotifier() {}

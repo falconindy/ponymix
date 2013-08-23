@@ -284,12 +284,15 @@ T* PulseClient::find_fuzzy(vector<T>& haystack, const string& needle) {
 }
 
 void PulseClient::populate_cards() {
-  cards_.clear();
+  vector<Card> cards;
   pa_operation* op = pa_context_get_card_info_list(context_,
                                                    card_info_cb,
-                                                   static_cast<void*>(&cards_));
+                                                   static_cast<void*>(&cards));
   mainloop_iterate(op);
   pa_operation_unref(op);
+
+  using std::swap;
+  swap(cards, cards_);
 }
 
 void PulseClient::populate_server_info() {
@@ -301,31 +304,39 @@ void PulseClient::populate_server_info() {
 }
 
 void PulseClient::populate_sinks() {
-  sinks_.clear();
+  vector<Device> sinks;
   pa_operation* op = pa_context_get_sink_info_list(
-      context_, device_info_cb, static_cast<void*>(&sinks_));
+      context_, device_info_cb, static_cast<void*>(&sinks));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  sink_inputs_.clear();
+  vector<Device> sink_inputs;
   op = pa_context_get_sink_input_info_list(
-      context_, device_info_cb, static_cast<void*>(&sink_inputs_));
+      context_, device_info_cb, static_cast<void*>(&sink_inputs));
   mainloop_iterate(op);
   pa_operation_unref(op);
+
+  using std::swap;
+  swap(sinks, sinks_);
+  swap(sink_inputs, sink_inputs_);
 }
 
 void PulseClient::populate_sources() {
-  sources_.clear();
+  vector<Device> sources;
   pa_operation* op = pa_context_get_source_info_list(
-      context_, device_info_cb, static_cast<void*>(&sources_));
+      context_, device_info_cb, static_cast<void*>(&sources));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  source_outputs_.clear();
+  vector<Device> source_outputs;
   op = pa_context_get_source_output_info_list(
-      context_, device_info_cb, static_cast<void*>(&source_outputs_));
+      context_, device_info_cb, static_cast<void*>(&source_outputs));
   mainloop_iterate(op);
   pa_operation_unref(op);
+
+  using std::swap;
+  swap(sources, sources_);
+  swap(source_outputs, source_outputs_);
 }
 
 bool PulseClient::SetMute(Device& device, bool mute) {

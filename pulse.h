@@ -42,7 +42,7 @@ struct Operations {
   pa_operation* (*SetDefault)(pa_context*, const char*, pa_context_success_cb_t,
                               void*);
   pa_operation* (*Kill)(pa_context*, uint32_t, pa_context_success_cb_t, void*);
-  pa_operation* (*Move)(pa_context *, uint32_t, uint32_t,
+  pa_operation* (*Move)(pa_context*, uint32_t, uint32_t,
                         pa_context_success_cb_t, void *);
 };
 
@@ -147,33 +147,33 @@ class PulseClient {
   void Populate();
 
   // Get a device by index or name and type, or all devices by type.
-  Device* GetDevice(const uint32_t& index, enum DeviceType type);
+  Device* GetDevice(const uint32_t index, enum DeviceType type);
   Device* GetDevice(const string& name, enum DeviceType type);
   const vector<Device>& GetDevices(enum DeviceType type) const;
 
   // Get a sink by index or name, or all sinks.
-  Device* GetSink(const uint32_t& index);
+  Device* GetSink(const uint32_t index);
   Device* GetSink(const string& name);
   const vector<Device>& GetSinks() const { return sinks_; }
 
   // Get a source by index or name, or all sources.
-  Device* GetSource(const uint32_t& index);
+  Device* GetSource(const uint32_t index);
   Device* GetSource(const string& name);
   const vector<Device>& GetSources() const { return sources_; }
 
   // Get a sink input by index or name, or all sink inputs.
-  Device* GetSinkInput(const uint32_t& name);
+  Device* GetSinkInput(const uint32_t name);
   Device* GetSinkInput(const string& name);
   const vector<Device>& GetSinkInputs() const { return sink_inputs_; }
 
   // Get a source output by index or name, or all source outputs.
-  Device* GetSourceOutput(const uint32_t& name);
+  Device* GetSourceOutput(const uint32_t name);
   Device* GetSourceOutput(const string& name);
   const vector<Device>& GetSourceOutputs() const { return source_outputs_; }
 
   // Get a card by index or name, all cards, or get the card which
   // a sink is attached to.
-  Card* GetCard(const uint32_t& index);
+  Card* GetCard(const uint32_t index);
   Card* GetCard(const string& name);
   Card* GetCard(const Device& device);
   const vector<Card>& GetCards() const { return cards_; }
@@ -232,7 +232,7 @@ class PulseClient {
   void populate_sinks();
   void populate_sources();
 
-  Device* get_device(vector<Device>& devices, const uint32_t& index);
+  Device* get_device(vector<Device>& devices, const uint32_t index);
   Device* get_device(vector<Device>& devices, const string& name);
 
   void remove_device(Device& device);

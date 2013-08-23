@@ -141,7 +141,7 @@ void PulseClient::Populate() {
   populate_cards();
 }
 
-Card* PulseClient::GetCard(const uint32_t& index) {
+Card* PulseClient::GetCard(const uint32_t index) {
   for (Card& card : cards_) {
     if (card.index_ == index) return &card;
   }
@@ -165,7 +165,7 @@ Card* PulseClient::GetCard(const Device& device) {
 }
 
 Device* PulseClient::get_device(vector<Device>& devices,
-                                const uint32_t& index) {
+                                const uint32_t index) {
   for (Device& device : devices) {
     if (device.index_ == index) return &device;
   }
@@ -181,7 +181,7 @@ Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
   }
 }
 
-Device* PulseClient::GetDevice(const uint32_t& index, enum DeviceType type) {
+Device* PulseClient::GetDevice(const uint32_t index, enum DeviceType type) {
   switch (type) {
   case DEVTYPE_SINK:
     return GetSink(index);
@@ -223,7 +223,7 @@ const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
   throw std::runtime_error("Impossible DeviceType encountered in GetDevices");
 }
 
-Device* PulseClient::GetSink(const uint32_t& index) {
+Device* PulseClient::GetSink(const uint32_t index) {
   return get_device(sinks_, index);
 }
 
@@ -231,7 +231,7 @@ Device* PulseClient::GetSink(const string& name) {
   return get_device(sinks_, name);
 }
 
-Device* PulseClient::GetSource(const uint32_t& index) {
+Device* PulseClient::GetSource(const uint32_t index) {
   return get_device(sources_, index);
 }
 
@@ -239,7 +239,7 @@ Device* PulseClient::GetSource(const string& name) {
   return get_device(sources_, name);
 }
 
-Device* PulseClient::GetSinkInput(const uint32_t& index) {
+Device* PulseClient::GetSinkInput(const uint32_t index) {
   return get_device(sink_inputs_, index);
 }
 
@@ -247,7 +247,7 @@ Device* PulseClient::GetSinkInput(const string& name) {
   return get_device(sink_inputs_, name);
 }
 
-Device* PulseClient::GetSourceOutput(const uint32_t& index) {
+Device* PulseClient::GetSourceOutput(const uint32_t index) {
   return get_device(source_outputs_, index);
 }
 

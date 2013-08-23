@@ -17,7 +17,7 @@ class Notifier {
  public:
   virtual ~Notifier() {}
 
-  virtual void Notify(enum NotificationType type, long value, bool mute) = 0;
+  virtual void Notify(enum NotificationType type, long value, bool mute) const = 0;
 
  protected:
   bool initialized_;
@@ -26,14 +26,14 @@ class Notifier {
 class NullNotifier : public Notifier {
  public:
   virtual ~NullNotifier() {}
-  virtual void Notify(enum NotificationType, long, bool) {}
+  virtual void Notify(enum NotificationType, long, bool) const {}
 };
 
 class CommandLineNotifier : public Notifier {
  public:
   virtual ~CommandLineNotifier() {}
 
-  virtual void Notify(enum NotificationType type, long value, bool) {
+  virtual void Notify(enum NotificationType type, long value, bool) const {
     switch (type) {
     case NOTIFY_VOLUME:
     case NOTIFY_BALANCE:
@@ -56,7 +56,7 @@ class LibnotifyNotifier : public Notifier {
     notify_uninit();
   }
 
-  virtual void Notify(enum NotificationType type, long value, bool mute) {
+  virtual void Notify(enum NotificationType type, long value, bool mute) const {
     switch (type) {
     case NOTIFY_BALANCE:
       break;
@@ -69,7 +69,7 @@ class LibnotifyNotifier : public Notifier {
   }
 
  private:
-  void volchange(long vol, bool mute) {
+  void volchange(long vol, bool mute) const {
     const char* icon = "notification-audio-volume-muted";
 
     if (!mute) {

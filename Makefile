@@ -41,4 +41,8 @@ clean:
 	$(RM) ponymix pulse.o
 
 dist:
-	git archive --format=tar --prefix=ponymix-$(V)/ HEAD | gzip -9 > ponymix-$(V).tar.gz
+	git archive --format=tar --prefix=ponymix-$(V)/ HEAD | xz -9 > ponymix-$(V).tar.xz
+
+upload: all dist
+	gpg --detach-sign ponymix-$(V).tar.xz
+	scp ponymix-$(V).tar.xz ponymix-$(V).tar.xz.sig code.falconindy.com:archive/ponymix/

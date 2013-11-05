@@ -346,19 +346,16 @@ static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
 
 static int Mute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-
   return !ponymix.SetMute(*device, true);
 }
 
 static int Unmute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-
   return !ponymix.SetMute(*device, false);
 }
 
 static int ToggleMute(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-
   return !ponymix.SetMute(*device, !ponymix.IsMuted(*device));
 }
 
@@ -369,7 +366,6 @@ static int IsMuted(PulseClient& ponymix, int, char*[]) {
 
 static int SetDefault(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-
   return !ponymix.SetDefault(*device);
 }
 

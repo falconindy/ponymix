@@ -456,6 +456,9 @@ static const std::pair<const string, const Command>& string_to_command(
   };
 
   const auto match = actionmap.lower_bound(str);
+  if (match == actionmap.end()) {
+    errx(1, "error: Invalid action specified: %s", str);
+  }
 
   // Check for exact match
   if (match->first == str) {

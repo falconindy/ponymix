@@ -52,6 +52,7 @@ struct Color {
 
 static enum DeviceType opt_devtype;
 static bool opt_listrestrict;
+static bool opt_short;
 static const char* opt_action;
 static const char* opt_device;
 static const char* opt_card;
@@ -109,8 +110,8 @@ static Device* string_to_device_or_die(PulseClient& ponymix,
   return device;
 }
 
-static void Print(const Device& device, bool shirt) {
-  if (shirt) {
+static void Print(const Device& device) {
+  if (opt_short) {
     printf("%s\t%d\t%s\t%s\n",
            type_to_string(device.Type()),
            device.Index(),
@@ -153,8 +154,8 @@ static void Print(const Device& device, bool shirt) {
          color.reset);
 }
 
-static void Print(const Card& card, bool shirt) {
-  if (shirt) {
+static void Print(const Card& card) {
+  if (opt_short) {
     printf("%s\n", card.Name().c_str());
     return;
   }
@@ -170,8 +171,8 @@ static void Print(const Card& card, bool shirt) {
          card.ActiveProfile().name.c_str());
 }
 
-static void Print(const Profile& profile, bool active, bool shirt) {
-  if (shirt) {
+static void Print(const Profile& profile, bool active) {
+  if (opt_short) {
     printf("%s\n", profile.name.c_str());
     return;
   }
@@ -190,46 +191,30 @@ static void Print(const Profile& profile, bool active, bool shirt) {
 
 static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
   const auto& info = ponymix.GetDefaults();
-  Print(*ponymix.GetSink(info.sink), false);
-  Print(*ponymix.GetSource(info.source), false);
-  return 0;
-}
-
-static int list_devices(PulseClient& ponymix, bool shirt) {
-  if (opt_listrestrict) {
-    for (const auto& d : ponymix.GetDevices(opt_devtype)) Print(d, shirt);
-    return 0;
-  }
-
-  for (const auto& s : ponymix.GetSinks()) Print(s, shirt);
-  for (const auto& s : ponymix.GetSources()) Print(s, shirt);
-  for (const auto& s : ponymix.GetSinkInputs()) Print(s, shirt);
-  for (const auto& s : ponymix.GetSourceOutputs()) Print(s, shirt);
-
+  Print(*ponymix.GetSink(info.sink));
+  Print(*ponymix.GetSource(info.source));
   return 0;
 }
 
 static int List(PulseClient& ponymix, int, char*[]) {
-  return list_devices(ponymix, false);
-}
+  if (opt_listrestrict) {
+    for (const auto& d : ponymix.GetDevices(opt_devtype)) Print(d);
+    return 0;
+  }
 
-static int ListShort(PulseClient& ponymix, int, char*[]) {
-  return list_devices(ponymix, true);
-}
-
-static int list_cards(PulseClient& ponymix, bool shirt) {
-  const auto& cards = ponymix.GetCards();
-  for (const auto& c : cards) Print(c, shirt);
+  for (const auto& s : ponymix.GetSinks()) Print(s);
+  for (const auto& s : ponymix.GetSources()) Print(s);
+  for (const auto& s : ponymix.GetSinkInputs()) Print(s);
+  for (const auto& s : ponymix.GetSourceOutputs()) Print(s);
 
   return 0;
 }
 
 static int ListCards(PulseClient& ponymix, int, char*[]) {
-  return list_cards(ponymix, false);
-}
+  const auto& cards = ponymix.GetCards();
+  for (const auto& c : cards) Print(c);
 
-static int ListCardsShort(PulseClient& ponymix, int, char*[]) {
-  return list_cards(ponymix, true);
+  return 0;
 }
 
 static Card* resolve_active_card_or_die(PulseClient& ponymix) {
@@ -248,24 +233,13 @@ static Card* resolve_active_card_or_die(PulseClient& ponymix) {
   return card;
 }
 
-static int list_profiles(PulseClient& ponymix, bool shirt) {
+static int ListProfiles(PulseClient& ponymix, int, char*[]) {
   auto card = resolve_active_card_or_die(ponymix);
 
   const auto& profiles = card->Profiles();
-  for (const auto& p : profiles) Print(p,
-                                       p.name == card->ActiveProfile().name,
-                                       shirt);
+  for (const auto& p : profiles) Print(p, p.name == card->ActiveProfile().name);
 
-  return 0;
-}
-
-static int ListProfiles(PulseClient& ponymix, int, char*[]) {
-  return list_profiles(ponymix, false);
-}
-
-static int ListProfilesShort(PulseClient& ponymix, int, char*[]) {
-  return list_profiles(ponymix, true);
-}
+  return 0;}
 
 static int GetVolume(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
@@ -421,6 +395,14 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
   return !ponymix.Kill(*device);
 }
 
+static bool endswith(const string& subject, const string& predicate) {
+  if (subject.size() < predicate.size()) {
+    return false;
+  }
+
+  return subject.compare(subject.size() - predicate.size(),
+      predicate.size(), predicate) == 0;
+}
 
 static const std::pair<const string, const Command>& string_to_command(
     const char* str) {
@@ -428,11 +410,11 @@ static const std::pair<const string, const Command>& string_to_command(
     // command name            function         arg min  arg max
     { "defaults",            { ShowDefaults,        { 0, 0 } } },
     { "list",                { List,                { 0, 0 } } },
-    { "list-short",          { ListShort,           { 0, 0 } } },
+    { "list-short",          { List,                { 0, 0 } } },
     { "list-cards",          { ListCards,           { 0, 0 } } },
-    { "list-cards-short",    { ListCardsShort,      { 0, 0 } } },
+    { "list-cards-short",    { ListCards,           { 0, 0 } } },
     { "list-profiles",       { ListProfiles,        { 0, 0 } } },
-    { "list-profiles-short", { ListProfilesShort,   { 0, 0 } } },
+    { "list-profiles-short", { ListProfiles,        { 0, 0 } } },
     { "get-volume",          { GetVolume,           { 0, 0 } } },
     { "set-volume",          { SetVolume,           { 1, 1 } } },
     { "get-balance",         { GetBalance,          { 0, 0 } } },
@@ -501,6 +483,7 @@ static void usage() {
         " -t, --devtype TYPE      device type\n"
         " -N, --notify            use libnotify to announce volume changes\n"
         "     --max-volume VALUE  use VALUE as max volume\n"
+        "     --short             output brief (parseable) lists\n"
         "     --source            alias to -t source\n"
         "     --input             alais to -t source\n"
         "     --sink              alias to -t sink\n"
@@ -513,9 +496,7 @@ static void usage() {
         "  defaults               list default devices (default command)\n"
         "  set-default            set default device by ID\n"
         "  list                   list available devices\n"
-        "  list-short             list available devices (short form)\n"
         "  list-cards             list available cards\n"
-        "  list-cards-short       list available cards (short form)\n"
         "  get-volume             get volume for device\n"
         "  set-volume VALUE       set volume for device\n"
         "  get-balance            get balance for device\n"
@@ -533,15 +514,13 @@ static void usage() {
 
   fputs("\nCard Commands:\n"
         "  list-profiles          list available profiles for a card\n"
-        "  list-profiles-short    list available profiles for a card"
-                                  "(short form)\n"
         "  get-profile            get active profile for card\n"
         "  set-profile PROFILE    set profile for a card\n", stdout);
 
   exit(EXIT_SUCCESS);
 }
 
-void error_wrong_args(const Command& cmd, const char* cmdname) {
+static void error_wrong_args(const Command& cmd, const char* cmdname) {
   if (cmd.args.min == cmd.args.max) {
     errx(1, "error: %s takes exactly %d argument%c",
         cmdname, cmd.args.min, cmd.args.min == 1 ? '\0' : 's');
@@ -568,6 +547,10 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
     error_wrong_args(cmd.second, cmd.first.c_str());
   }
 
+  if (endswith(cmd.first, string("-short"))) {
+    opt_short = true;
+  }
+
   return cmd.second.fn(ponymix, argc, argv);
 }
 
@@ -586,6 +569,7 @@ bool parse_options(int argc, char** argv) {
     { "sink-input",     no_argument,       0, 0x104 },
     { "source-output",  no_argument,       0, 0x105 },
     { "max-volume",     required_argument, 0, 0x106 },
+    { "short",          no_argument,       0, 0x107 },
     { 0, 0, 0, 0 },
   };
 
@@ -638,6 +622,9 @@ bool parse_options(int argc, char** argv) {
             optarg);
         return false;
       }
+      break;
+    case 0x107:
+      opt_short = true;
       break;
     default:
       return false;

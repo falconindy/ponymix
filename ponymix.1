@@ -34,6 +34,9 @@ Aliases to \fB--devtype\fR \fIsource\fR.
 Alias to \fB--devtype\fR \fIsource-output\fR.
 .IP "\fB--sink-input\fR"
 Alias to \fB--devtype\fR \fIsink-input\fR.
+.IP "\fB--short\fR"
+Generate output for list commands in a parseable format. This only applies to the
+\fIlist\fR, \fIlist-cards\fR, and \fIlist-profiles\fR commands.
 .SH OPERATIONS
 .SS Generic Commands
 .IP "\fBhelp\fR"
@@ -44,9 +47,6 @@ all the listed commands.
 .PP
 .IP "\fBlist\fR"
 List all available devices. This can be filtered using the \fB--devtype\fR flag.
-.IP "\fBlist-short\fR"
-List all available devices in a parseable format.  This can be filtered using the
-\fB--devtype\fR flag.
 .IP "\fBdefaults\fR"
 Display the default sink and source. This is the default command if none
 is specified.
@@ -93,12 +93,8 @@ These commands are specific to cards.
 .PP
 .IP "\fBlist-cards\fR"
 List all available cards.
-.IP "\fBlist-cards-short\fR"
-List names for all available cards.
 .IP "\fBlist-profiles\fR"
 List profiles for a card.
-.IP "\fBlist-profiles-short\fR"
-List only names for the available profiles for a card.
 .IP "\fBset-profile\fR" \fIPROFILE\fR
 Set the specified profile for a card.
 .SH AUTHORS

@@ -3,7 +3,6 @@
 
 // C
 #include <err.h>
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -74,7 +73,7 @@ static void server_info_cb(pa_context* context __attribute__((unused)),
 
 static pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
   return pa_cvolume_set(cvol, cvol->channels,
-      fmax(static_cast<double>(value + .5) * PA_VOLUME_NORM / 100, 0));
+      std::max((value + .5) * PA_VOLUME_NORM / 100, 0.0));
 }
 
 static int volume_as_percent(const pa_cvolume* cvol) {

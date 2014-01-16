@@ -590,6 +590,7 @@ Device::Device(const pa_sink_info* info) :
   update_volume(info->volume);
   memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
+  port_available_ = (info->active_port->available == PA_PORT_AVAILABLE_YES);
 
   ops_.SetVolume = pa_context_set_sink_volume_by_index;
   ops_.Mute = pa_context_set_sink_mute_by_index;

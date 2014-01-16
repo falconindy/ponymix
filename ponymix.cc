@@ -196,6 +196,11 @@ static int ShowDefaults(PulseClient& ponymix, int, char*[]) {
   return 0;
 }
 
+static int HeadphonesCheck(PulseClient& ponymix, int, char*[]) {
+  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  return !device->PortAvailable();
+}
+
 static int List(PulseClient& ponymix, int, char*[]) {
   if (opt_listrestrict) {
     for (const auto& d : ponymix.GetDevices(opt_devtype)) Print(d);
@@ -430,7 +435,8 @@ static const std::pair<const string, const Command>& string_to_command(
     { "get-profile",         { GetProfile,          { 0, 0 } } },
     { "set-profile",         { SetProfile,          { 1, 1 } } },
     { "move",                { Move,                { 1, 1 } } },
-    { "kill",                { Kill,                { 0, 0 } } }
+    { "kill",                { Kill,                { 0, 0 } } },
+    { "headphones",          { HeadphonesCheck,     { 0, 0 } } }
   };
 
   const auto match = actionmap.lower_bound(str);
@@ -509,6 +515,7 @@ static void usage() {
         "  toggle                 toggle mute\n"
         "  is-muted               check if muted\n", stdout);
   fputs("\nApplication Commands:\n"
+        "  headphones             check if headphones are plugged in\n"
         "  move DEVICE            move target device to DEVICE\n"
         "  kill DEVICE            kill target DEVICE\n", stdout);
 

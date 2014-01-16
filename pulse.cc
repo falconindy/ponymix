@@ -596,6 +596,20 @@ Device::Device(const pa_sink_info* info) :
   ops_.Kill = nullptr;
   ops_.Move = nullptr;
   ops_.SetDefault = pa_context_set_default_sink;
+
+  if (info->active_port) {
+    switch (info->active_port->available) {
+      case PA_PORT_AVAILABLE_YES:
+        available_ = Device::AVAILABLE_YES;
+        break;
+      case PA_PORT_AVAILABLE_NO:
+        available_ = Device::AVAILABLE_NO;
+        break;
+      case PA_PORT_AVAILABLE_UNKNOWN:
+        available_ = Device::AVAILABLE_UNKNOWN;
+        break;
+    }
+  }
 }
 
 Device::Device(const pa_source_info* info) :

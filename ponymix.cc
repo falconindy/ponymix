@@ -169,6 +169,7 @@ static void Print(const Card& card) {
          card.Name().c_str(),
          card.Driver().c_str(),
          card.ActiveProfile().name.c_str());
+
 }
 
 static void Print(const Profile& profile, bool active) {
@@ -395,6 +396,11 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
   return !ponymix.Kill(*device);
 }
 
+static int IsAvailable(PulseClient& ponymix, int, char*[]) {
+  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  return ponymix.Availability(*device) == Device::AVAILABLE_YES;
+}
+
 static bool endswith(const string& subject, const string& predicate) {
   if (subject.size() < predicate.size()) {
     return false;
@@ -430,7 +436,8 @@ static const std::pair<const string, const Command>& string_to_command(
     { "get-profile",         { GetProfile,          { 0, 0 } } },
     { "set-profile",         { SetProfile,          { 1, 1 } } },
     { "move",                { Move,                { 1, 1 } } },
-    { "kill",                { Kill,                { 0, 0 } } }
+    { "kill",                { Kill,                { 0, 0 } } },
+    { "is-available",        { IsAvailable,         { 0, 0 } } },
   };
 
   const auto match = actionmap.lower_bound(str);
@@ -488,7 +495,7 @@ static void usage() {
         "     --max-volume VALUE  use VALUE as max volume\n"
         "     --short             output brief (parseable) lists\n"
         "     --source            alias to -t source\n"
-        "     --input             alais to -t source\n"
+        "     --input             alias to -t source\n"
         "     --sink              alias to -t sink\n"
         "     --output            alias to -t sink\n"
         "     --sink-input        alias to -t sink-input\n"
@@ -510,7 +517,8 @@ static void usage() {
         "  mute                   mute device\n"
         "  unmute                 unmute device\n"
         "  toggle                 toggle mute\n"
-        "  is-muted               check if muted\n", stdout);
+        "  is-muted               check if muted\n"
+        "  is-available           check if available\n", stdout);
   fputs("\nApplication Commands:\n"
         "  move DEVICE            move target device to DEVICE\n"
         "  kill DEVICE            kill target DEVICE\n", stdout);

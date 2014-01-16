@@ -76,6 +76,10 @@ Mute, unmute, or toggle the mute status of a device.
 .IP "\fBis-muted\fR"
 Check if a device is muted. ponymix will exit zero if muted, and non-zero
 otherwise.
+.IP "\fis-available\fR"
+Check if a device is available. This usually applies to headphone jacks, but not
+all devices will support this check. ponymix will exit zero if the port is
+definitively available, and non-zero if unavailable or unknown.
 .SS Application Commands
 These commands are specific to devices which refer to streams of applications.
 For these commands, \fIsink\fR and \fIsource\fR are synonymous with \fIsink-input\fR

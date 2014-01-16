@@ -48,6 +48,12 @@ struct Operations {
 
 class Device {
  public:
+  typedef enum {
+    AVAILABLE_UNKNOWN = 0,
+    AVAILABLE_NO,
+    AVAILABLE_YES,
+  } Availability;
+
   Device(const pa_source_info* info);
   Device(const pa_sink_info* info);
   Device(const pa_sink_input_info* info);
@@ -77,6 +83,7 @@ class Device {
   int balance_;
   uint32_t card_idx_;
   Operations ops_;
+  Device::Availability available_ = Device::AVAILABLE_UNKNOWN;
 };
 
 class Card {
@@ -197,6 +204,10 @@ class PulseClient {
   // Get and set mute for a device.
   bool IsMuted(const Device& device) const { return device.mute_; };
   bool SetMute(Device& device, bool mute);
+
+  Device::Availability Availability(const Device& device) const {
+    return device.available_;
+  }
 
   // Set the profile for a card by name.
   bool SetProfile(Card& card, const string& profile);

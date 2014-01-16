@@ -58,6 +58,7 @@ class Device {
   const string& Desc() const { return desc_; }
   int Volume() const { return volume_percent_; }
   int Balance() const { return balance_; }
+  bool PortAvailable() const { return port_available_; }
   bool Muted() const { return mute_; }
   enum DeviceType Type() const { return type_; }
 
@@ -74,6 +75,7 @@ class Device {
   int volume_percent_;
   pa_channel_map channels_;
   int mute_;
+  bool port_available_;
   int balance_;
   uint32_t card_idx_;
   Operations ops_;

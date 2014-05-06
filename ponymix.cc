@@ -468,6 +468,9 @@ static const std::pair<const string, const Command>& string_to_command(
 }
 
 static void version() {
+  execlp("ponysay", "ponysay", "-b", "", "ponymix " PONYMIX_VERSION, NULL);
+
+  // Some people are pony haters.
   fputs("ponymix v" PONYMIX_VERSION "\n", stdout);
   exit(EXIT_SUCCESS);
 }

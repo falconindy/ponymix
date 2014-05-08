@@ -104,7 +104,7 @@ PulseClient::PulseClient(string client_name) :
   pa_proplist* proplist = pa_proplist_new();
   pa_proplist_sets(proplist, PA_PROP_APPLICATION_NAME, client_name.c_str());
   pa_proplist_sets(proplist, PA_PROP_APPLICATION_ID, "com.falconindy.ponymix");
-  pa_proplist_sets(proplist, PA_PROP_APPLICATION_VERSION, "0.1");
+  pa_proplist_sets(proplist, PA_PROP_APPLICATION_VERSION, PONYMIX_VERSION);
   pa_proplist_sets(proplist, PA_PROP_APPLICATION_ICON_NAME, "audio-card");
 
   mainloop_ = pa_mainloop_new();

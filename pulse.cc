@@ -454,7 +454,7 @@ bool PulseClient::SetProfile(Card& card, const string& profile) {
 
   if (success) {
     // Update the profile
-    for (const Profile p : card.profiles_) {
+    for (const Profile& p : card.profiles_) {
       if (p.name == profile) {
         card.active_profile_ = p;
         break;

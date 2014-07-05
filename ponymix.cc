@@ -554,7 +554,7 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
   }
 
   const auto& cmd = string_to_command(opt_action);
-  if (cmd.second.args.InRange(argc) != 0) {
+  if (!cmd.second.args.InRange(argc)) {
     error_wrong_args(cmd.second, cmd.first.c_str());
   }
 

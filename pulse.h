@@ -133,11 +133,9 @@ struct Range {
     return value < min ? min : (value > max ? max : value);
   }
 
-  // Determine if the passed value is within the range. Returns 0
-  // on success, else -1 if lower than the minimum, and 1 if higher
-  // than the maximum.
-  int InRange(T value) const {
-    return value < min ? -1 : (value > max ? 1 : 0);
+  // Determine if the passed value is within the range.
+  bool InRange(T value) const {
+    return value >= min && value <= max;
   }
 
   T min;

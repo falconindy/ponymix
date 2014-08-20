@@ -77,7 +77,7 @@ static pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
 }
 
 static int volume_as_percent(const pa_cvolume* cvol) {
-  return pa_cvolume_avg(cvol) * 100.0 / PA_VOLUME_NORM + 0.5;
+  return pa_cvolume_avg(cvol) * 100.0 / PA_VOLUME_NORM;
 }
 
 static int xstrtol(const char *str, long *out) {

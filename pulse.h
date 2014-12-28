@@ -7,6 +7,7 @@
 
 // C++
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -258,6 +259,15 @@ class PulseClient {
   Range<int> volume_range_;
   Range<int> balance_range_;
   unique_ptr<Notifier> notifier_;
+};
+
+class unreachable : public std::runtime_error {
+ public:
+  unreachable() throw() :
+    std::runtime_error("unreachable code path encountered") {}
+
+  unreachable(const std::string& message) throw() :
+    std::runtime_error(message) {}
 };
 
 // vim: set et ts=2 sw=2:

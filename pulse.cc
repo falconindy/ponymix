@@ -192,6 +192,8 @@ Device* PulseClient::GetDevice(const uint32_t index, enum DeviceType type) {
   case DEVTYPE_SOURCE_OUTPUT:
     return GetSourceOutput(index);
   }
+
+  throw unreachable();
 }
 
 Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
@@ -205,6 +207,8 @@ Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
   case DEVTYPE_SOURCE_OUTPUT:
     return GetSourceOutput(name);
   }
+
+  throw unreachable();
 }
 
 const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
@@ -218,6 +222,8 @@ const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
   case DEVTYPE_SOURCE_OUTPUT:
     return GetSourceOutputs();
   }
+
+  throw unreachable();
 }
 
 Device* PulseClient::GetSink(const uint32_t index) {

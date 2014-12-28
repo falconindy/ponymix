@@ -83,6 +83,8 @@ static const char* type_to_string(enum DeviceType t) {
   case DEVTYPE_SOURCE_OUTPUT:
     return "source-output";
   }
+
+  throw unreachable();
 }
 
 static enum DeviceType string_to_devtype_or_die(const char* str) {

@@ -122,7 +122,7 @@ else
             {-t,--devtype}'[Device Type]: :(sink-input)' \
         - '(source-output)' \
             {-t,--devtype}'[Device Type]:device types:(source-output)' \
-            '--source-output[alias to type sour-output]' \
+            '--source-output[alias to type source-output]' \
         - '(card)' \
             '(-d --device)'{-c,--card}'[target card]:Cards:_cards:Card Commands:((${(q)_card_commands}))'
 fi

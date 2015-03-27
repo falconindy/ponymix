@@ -654,12 +654,16 @@ int main(int argc, char* argv[]) {
   ServerInfo defaults = ponymix.GetDefaults();
   opt_action = "defaults";
   opt_devtype = DEVTYPE_SINK;
-  opt_device = defaults.sink.c_str();
   opt_maxvolume = 100;
 
   if (!parse_options(argc, argv)) return 1;
   argc -= optind;
   argv += optind;
+
+  // Do this after parsing such that we respect any changes to opt_devtype and
+  // explicit opt_device
+  if (opt_device == nullptr)
+    opt_device = defaults.GetDefault(opt_devtype).c_str();
 
   try {
 #ifdef HAVE_NOTIFY

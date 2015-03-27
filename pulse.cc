@@ -11,9 +11,6 @@
 #include <algorithm>
 #include <stdexcept>
 
-// External
-#include <pulse/pulseaudio.h>
-
 namespace {
 static void connect_state_cb(pa_context* context, void* raw) {
   enum pa_context_state *state = static_cast<enum pa_context_state*>(raw);

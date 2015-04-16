@@ -101,22 +101,29 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
   }
 }
 
-static Device* string_to_device_or_die(PulseClient& ponymix,
-                                       string arg) {
+static Device* string_to_device_or_die(PulseClient& ponymix, string arg) {
   for (const auto& s : ponymix.GetSinks()) {
-    if (s.Name() == arg) {return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK);}
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK);
+    }
   }
 
   for (const auto& s : ponymix.GetSources()) {
-    if (s.Name() == arg) {return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE);}
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE);
+    }
   }
 
   for (const auto& s : ponymix.GetSinkInputs()) {
-    if (s.Name() == arg) {return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK_INPUT);}
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK_INPUT);
+    }
   }
 
   for (const auto& s : ponymix.GetSourceOutputs()) {
-    if (s.Name() == arg) {return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE_OUTPUT);}
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE_OUTPUT);
+    }
   }
 
   errx(1, "no match found for device: %s", arg.c_str());

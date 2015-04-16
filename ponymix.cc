@@ -129,14 +129,6 @@ static Device* string_to_device_or_die(PulseClient& ponymix, string arg) {
   errx(1, "no match found for device: %s", arg.c_str());
 }
 
-static Device* string_to_device_or_die(PulseClient& ponymix,
-                                       string arg,
-                                       enum DeviceType type) {
-  Device* device = ponymix.GetDevice(arg, type);
-  if (device == nullptr) errx(1, "no match found for device: %s", arg.c_str());
-  return device;
-}
-
 static void Print(const Device& device) {
   if (opt_short) {
     printf("%s\t%d\t%s\t%s\n",

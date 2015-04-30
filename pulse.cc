@@ -69,12 +69,11 @@ static void server_info_cb(pa_context* context __attribute__((unused)),
 }
 
 static pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
-  return pa_cvolume_set(cvol, cvol->channels,
-      std::max(value * PA_VOLUME_NORM / 100.0, 0.0));
+  return pa_cvolume_scale(cvol, std::max(value * PA_VOLUME_NORM / 100.0, 0.0));
 }
 
 static int volume_as_percent(const pa_cvolume* cvol) {
-  return round(pa_cvolume_avg(cvol) * 100.0 / PA_VOLUME_NORM);
+  return round(pa_cvolume_max(cvol) * 100.0 / PA_VOLUME_NORM);
 }
 
 static int xstrtol(const char *str, long *out) {

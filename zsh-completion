@@ -5,7 +5,7 @@ local state line curcontext="$curcontext"
 typeset -U _commands
 _common_command(){
     _commands+=(
-        'list:list available dsevices'
+        'list:list available devices'
         'list-short:list available devices, short form'
         'list-cards:list available cards'
         'list-cards-short:list available cards, short form'

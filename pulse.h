@@ -112,15 +112,16 @@ class Card {
 struct ServerInfo {
   string sink;
   string source;
+  string empty = "";
 
-  const string GetDefault(enum DeviceType type) {
+  const string& GetDefault(enum DeviceType type) {
     switch (type) {
     case DEVTYPE_SINK:
       return sink;
     case DEVTYPE_SOURCE:
       return source;
     default:
-      return "";
+      return empty;
     }
   }
 };

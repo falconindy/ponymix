@@ -4,6 +4,7 @@
 // C
 #include <err.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 
 // C++

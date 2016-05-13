@@ -101,12 +101,32 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
   }
 }
 
-static Device* string_to_device_or_die(PulseClient& ponymix,
-                                       string arg,
-                                       enum DeviceType type) {
-  Device* device = ponymix.GetDevice(arg, type);
-  if (device == nullptr) errx(1, "no match found for device: %s", arg.c_str());
-  return device;
+static Device* string_to_device_or_die(PulseClient& ponymix, string arg) {
+  for (const auto& s : ponymix.GetSinks()) {
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK);
+    }
+  }
+
+  for (const auto& s : ponymix.GetSources()) {
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE);
+    }
+  }
+
+  for (const auto& s : ponymix.GetSinkInputs()) {
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SINK_INPUT);
+    }
+  }
+
+  for (const auto& s : ponymix.GetSourceOutputs()) {
+    if (s.Name() == arg) {
+      return ponymix.GetDevice(arg, DeviceType::DEVTYPE_SOURCE_OUTPUT);
+    }
+  }
+
+  errx(1, "no match found for device: %s", arg.c_str());
 }
 
 static void Print(const Device& device) {
@@ -220,7 +240,7 @@ static int ListCards(PulseClient& ponymix, int, char*[]) {
 static Card* resolve_active_card_or_die(PulseClient& ponymix) {
   Card* card;
   if (opt_card == nullptr) {
-    auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+    auto device = string_to_device_or_die(ponymix, opt_device);
     card = ponymix.GetCard(*device);
     if (card == nullptr) errx(1, "error: no card found or selected.");
   } else {
@@ -242,13 +262,13 @@ static int ListProfiles(PulseClient& ponymix, int, char*[]) {
   return 0;}
 
 static int GetVolume(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   printf("%d\n", device->Volume());
   return 0;
 }
 
 static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
 
   long volume;
   try {
@@ -261,13 +281,13 @@ static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
 }
 
 static int GetBalance(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   printf("%d\n", device->Balance());
   return 0;
 }
 
 static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
 
   long balance;
   try {
@@ -280,7 +300,7 @@ static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
 }
 
 static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
 
   long balance;
   try {
@@ -295,7 +315,7 @@ static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
 static int adj_volume(PulseClient& ponymix,
                       bool (PulseClient::*adjust)(Device&, long int),
                       char* argv[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
 
   long delta;
   try {
@@ -319,27 +339,27 @@ static int DecreaseVolume(PulseClient& ponymix, int, char* argv[]) {
 }
 
 static int Mute(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return !ponymix.SetMute(*device, true);
 }
 
 static int Unmute(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return !ponymix.SetMute(*device, false);
 }
 
 static int ToggleMute(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return !ponymix.SetMute(*device, !ponymix.IsMuted(*device));
 }
 
 static int IsMuted(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return !ponymix.IsMuted(*device);
 }
 
 static int SetDefault(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return !ponymix.SetDefault(*device);
 }
 
@@ -372,8 +392,8 @@ static int Move(PulseClient& ponymix, int, char* argv[]) {
   }
 
   // Does this even work?
-  auto source = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-  auto target = string_to_device_or_die(ponymix, argv[0], target_devtype);
+  auto source = string_to_device_or_die(ponymix, opt_device);
+  auto target = string_to_device_or_die(ponymix, argv[0]);
 
   return !ponymix.Move(*source, *target);
 }
@@ -390,13 +410,13 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
     break;
   }
 
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
 
   return !ponymix.Kill(*device);
 }
 
 static int IsAvailable(PulseClient& ponymix, int, char*[]) {
-  auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
+  auto device = string_to_device_or_die(ponymix, opt_device);
   return ponymix.Availability(*device) == Device::AVAILABLE_YES;
 }
 
@@ -653,7 +673,10 @@ int main(int argc, char* argv[]) {
   // that on demand if a function needs it.
   ServerInfo defaults = ponymix.GetDefaults();
   opt_action = "defaults";
+
+  // Silently ignored unless a specific device is targeted
   opt_devtype = DEVTYPE_SINK;
+
   opt_maxvolume = 100;
 
   if (!parse_options(argc, argv)) return 1;

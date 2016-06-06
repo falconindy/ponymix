@@ -12,12 +12,12 @@
 #include <stdexcept>
 
 namespace {
-static void connect_state_cb(pa_context* context, void* raw) {
+void connect_state_cb(pa_context* context, void* raw) {
   enum pa_context_state *state = static_cast<enum pa_context_state*>(raw);
   *state = pa_context_get_state(context);
 }
 
-static void success_cb(pa_context* context, int success, void* raw) {
+void success_cb(pa_context* context, int success, void* raw) {
   int *r = static_cast<int*>(raw);
   *r = success;
   if (!success) {
@@ -27,7 +27,7 @@ static void success_cb(pa_context* context, int success, void* raw) {
   }
 }
 
-static void card_info_cb(pa_context* context,
+void card_info_cb(pa_context* context,
                          const pa_card_info* info,
                          int eol,
                          void* raw) {
@@ -44,7 +44,7 @@ static void card_info_cb(pa_context* context,
 }
 
 template<typename T>
-static void device_info_cb(pa_context* context,
+void device_info_cb(pa_context* context,
                            const T* info,
                            int eol,
                            void* raw) {
@@ -60,7 +60,7 @@ static void device_info_cb(pa_context* context,
   }
 }
 
-static void server_info_cb(pa_context* context __attribute__((unused)),
+void server_info_cb(pa_context* context __attribute__((unused)),
                            const pa_server_info* i,
                            void* raw) {
   ServerInfo* defaults = static_cast<ServerInfo*>(raw);
@@ -68,15 +68,15 @@ static void server_info_cb(pa_context* context __attribute__((unused)),
   defaults->source = i->default_source_name;
 }
 
-static pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
+pa_cvolume* value_to_cvol(long value, pa_cvolume *cvol) {
   return pa_cvolume_scale(cvol, std::max(value * PA_VOLUME_NORM / 100.0, 0.0));
 }
 
-static int volume_as_percent(const pa_cvolume* cvol) {
+int volume_as_percent(const pa_cvolume* cvol) {
   return round(pa_cvolume_max(cvol) * 100.0 / PA_VOLUME_NORM);
 }
 
-static int xstrtol(const char *str, long *out) {
+int xstrtol(const char *str, long *out) {
   char *end = nullptr;
 
   if (str == nullptr || *str == '\0') return -1;
@@ -88,7 +88,7 @@ static int xstrtol(const char *str, long *out) {
   return 0;
 }
 
-}  // anonymous namespace
+}  // namespace
 
 PulseClient::PulseClient(std::string client_name) :
     client_name_(client_name),

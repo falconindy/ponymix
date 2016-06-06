@@ -13,12 +13,12 @@
 
 namespace {
 void connect_state_cb(pa_context* context, void* raw) {
-  enum pa_context_state *state = static_cast<enum pa_context_state*>(raw);
+  auto state = static_cast<enum pa_context_state*>(raw);
   *state = pa_context_get_state(context);
 }
 
 void success_cb(pa_context* context, int success, void* raw) {
-  int *r = static_cast<int*>(raw);
+  auto r = static_cast<int*>(raw);
   *r = success;
   if (!success) {
     fprintf(stderr,
@@ -38,7 +38,7 @@ void card_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    std::vector<Card>* cards = static_cast<std::vector<Card>*>(raw);
+    auto cards = static_cast<std::vector<Card>*>(raw);
     cards->push_back(info);
   }
 }
@@ -55,15 +55,15 @@ void device_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    std::vector<Device>* devices_ = static_cast<std::vector<Device>*>(raw);
-    devices_->push_back(info);
+    auto devices = static_cast<std::vector<Device>*>(raw);
+    devices->push_back(info);
   }
 }
 
 void server_info_cb(pa_context* context __attribute__((unused)),
                            const pa_server_info* i,
                            void* raw) {
-  ServerInfo* defaults = static_cast<ServerInfo*>(raw);
+  auto defaults = static_cast<ServerInfo*>(raw);
   defaults->sink = i->default_sink_name;
   defaults->source = i->default_source_name;
 }

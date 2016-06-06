@@ -665,17 +665,13 @@ int main(int argc, char* argv[]) {
   if (opt_device == nullptr)
     opt_device = defaults.GetDefault(opt_devtype).c_str();
 
-  try {
 #ifdef HAVE_NOTIFY
-    if (opt_notify) {
-      ponymix.EnableNotifications(new LibnotifyNotifier);
-    } else
+  if (opt_notify) {
+    ponymix.EnableNotifications(new LibnotifyNotifier);
+  } else
 #endif
-    {
-      ponymix.EnableNotifications(new CommandLineNotifier);
-    }
-  } catch (std::exception e) {
-    fprintf(stderr, "failed to enable notifier\n");
+  {
+    ponymix.EnableNotifications(new CommandLineNotifier);
   }
 
   return CommandDispatch(ponymix, argc, argv);

@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 // C++
-#include <string>
 #include <algorithm>
 #include <stdexcept>
 
@@ -39,7 +38,7 @@ static void card_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    vector<Card>* cards = static_cast<vector<Card>*>(raw);
+    std::vector<Card>* cards = static_cast<std::vector<Card>*>(raw);
     cards->push_back(info);
   }
 }
@@ -56,7 +55,7 @@ static void device_info_cb(pa_context* context,
   }
 
   if (!eol) {
-    vector<Device>* devices_ = static_cast<vector<Device>*>(raw);
+    std::vector<Device>* devices_ = static_cast<std::vector<Device>*>(raw);
     devices_->push_back(info);
   }
 }
@@ -91,7 +90,7 @@ static int xstrtol(const char *str, long *out) {
 
 }  // anonymous namespace
 
-PulseClient::PulseClient(string client_name) :
+PulseClient::PulseClient(std::string client_name) :
     client_name_(client_name),
     volume_range_(0, 150),
     balance_range_(-100, 100),
@@ -145,7 +144,7 @@ Card* PulseClient::GetCard(const uint32_t index) {
   return nullptr;
 }
 
-Card* PulseClient::GetCard(const string& name) {
+Card* PulseClient::GetCard(const std::string& name) {
   long val;
   if (xstrtol(name.c_str(), &val) == 0) {
     return GetCard(val);
@@ -161,7 +160,7 @@ Card* PulseClient::GetCard(const Device& device) {
   return nullptr;
 }
 
-Device* PulseClient::get_device(vector<Device>& devices,
+Device* PulseClient::get_device(std::vector<Device>& devices,
                                 const uint32_t index) {
   for (Device& device : devices) {
     if (device.index_ == index) return &device;
@@ -169,7 +168,7 @@ Device* PulseClient::get_device(vector<Device>& devices,
   return nullptr;
 }
 
-Device* PulseClient::get_device(vector<Device>& devices, const string& name) {
+Device* PulseClient::get_device(std::vector<Device>& devices, const std::string& name) {
   long val;
   if (xstrtol(name.c_str(), &val) == 0) {
     return get_device(devices, val);
@@ -193,7 +192,7 @@ Device* PulseClient::GetDevice(const uint32_t index, enum DeviceType type) {
   throw unreachable();
 }
 
-Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
+Device* PulseClient::GetDevice(const std::string& name, enum DeviceType type) {
   switch (type) {
   case DEVTYPE_SINK:
     return GetSink(name);
@@ -208,7 +207,7 @@ Device* PulseClient::GetDevice(const string& name, enum DeviceType type) {
   throw unreachable();
 }
 
-const vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
+const std::vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
   switch (type) {
   case DEVTYPE_SINK:
     return GetSinks();
@@ -227,7 +226,7 @@ Device* PulseClient::GetSink(const uint32_t index) {
   return get_device(sinks_, index);
 }
 
-Device* PulseClient::GetSink(const string& name) {
+Device* PulseClient::GetSink(const std::string& name) {
   return get_device(sinks_, name);
 }
 
@@ -235,7 +234,7 @@ Device* PulseClient::GetSource(const uint32_t index) {
   return get_device(sources_, index);
 }
 
-Device* PulseClient::GetSource(const string& name) {
+Device* PulseClient::GetSource(const std::string& name) {
   return get_device(sources_, name);
 }
 
@@ -243,7 +242,7 @@ Device* PulseClient::GetSinkInput(const uint32_t index) {
   return get_device(sink_inputs_, index);
 }
 
-Device* PulseClient::GetSinkInput(const string& name) {
+Device* PulseClient::GetSinkInput(const std::string& name) {
   return get_device(sink_inputs_, name);
 }
 
@@ -251,7 +250,7 @@ Device* PulseClient::GetSourceOutput(const uint32_t index) {
   return get_device(source_outputs_, index);
 }
 
-Device* PulseClient::GetSourceOutput(const string& name) {
+Device* PulseClient::GetSourceOutput(const std::string& name) {
   return get_device(source_outputs_, name);
 }
 
@@ -263,11 +262,11 @@ void PulseClient::mainloop_iterate(pa_operation* op) {
 }
 
 template<class T>
-T* PulseClient::find_fuzzy(vector<T>& haystack, const string& needle) {
-  vector<T*> res;
+T* PulseClient::find_fuzzy(std::vector<T>& haystack, const std::string& needle) {
+  std::vector<T*> res;
 
   for (T& item : haystack) {
-    if (item.name_.find(needle) != string::npos) res.push_back(&item);
+    if (item.name_.find(needle) != std::string::npos) res.push_back(&item);
   }
 
   switch (res.size()) {
@@ -283,7 +282,7 @@ T* PulseClient::find_fuzzy(vector<T>& haystack, const string& needle) {
 }
 
 void PulseClient::populate_cards() {
-  vector<Card> cards;
+  std::vector<Card> cards;
   pa_operation* op = pa_context_get_card_info_list(context_,
                                                    card_info_cb,
                                                    static_cast<void*>(&cards));
@@ -303,13 +302,13 @@ void PulseClient::populate_server_info() {
 }
 
 void PulseClient::populate_sinks() {
-  vector<Device> sinks;
+  std::vector<Device> sinks;
   pa_operation* op = pa_context_get_sink_info_list(
       context_, device_info_cb, static_cast<void*>(&sinks));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  vector<Device> sink_inputs;
+  std::vector<Device> sink_inputs;
   op = pa_context_get_sink_input_info_list(
       context_, device_info_cb, static_cast<void*>(&sink_inputs));
   mainloop_iterate(op);
@@ -321,13 +320,13 @@ void PulseClient::populate_sinks() {
 }
 
 void PulseClient::populate_sources() {
-  vector<Device> sources;
+  std::vector<Device> sources;
   pa_operation* op = pa_context_get_source_info_list(
       context_, device_info_cb, static_cast<void*>(&sources));
   mainloop_iterate(op);
   pa_operation_unref(op);
 
-  vector<Device> source_outputs;
+  std::vector<Device> source_outputs;
   op = pa_context_get_source_output_info_list(
       context_, device_info_cb, static_cast<void*>(&source_outputs));
   mainloop_iterate(op);
@@ -441,7 +440,7 @@ int PulseClient::GetBalance(const Device& device) const {
   return device.Balance();
 }
 
-bool PulseClient::SetProfile(Card& card, const string& profile) {
+bool PulseClient::SetProfile(Card& card, const std::string& profile) {
   int success;
   pa_operation* op =
     pa_context_set_card_profile_by_index(context_,
@@ -537,7 +536,7 @@ bool PulseClient::SetDefault(Device& device) {
 }
 
 void PulseClient::remove_device(Device& device) {
-  vector<Device>* devlist;
+  std::vector<Device>* devlist;
 
   switch (device.type_) {
   case DEVTYPE_SINK:

@@ -14,10 +14,6 @@
 // external
 #include <pulse/pulseaudio.h>
 
-using std::string;
-using std::vector;
-using std::unique_ptr;
-
 enum DeviceType {
   DEVTYPE_SINK,
   DEVTYPE_SOURCE,
@@ -31,8 +27,8 @@ struct Profile {
       desc(info.description) {
   }
 
-  string name;
-  string desc;
+  std::string name;
+  std::string desc;
 };
 
 struct Operations {
@@ -61,8 +57,8 @@ class Device {
   Device(const pa_source_output_info* info);
 
   uint32_t Index() const { return index_; }
-  const string& Name() const { return name_; }
-  const string& Desc() const { return desc_; }
+  const std::string& Name() const { return name_; }
+  const std::string& Desc() const { return desc_; }
   int Volume() const { return volume_percent_; }
   int Balance() const { return balance_; }
   bool Muted() const { return mute_; }
@@ -75,8 +71,8 @@ class Device {
 
   enum DeviceType type_;
   uint32_t index_;
-  string name_;
-  string desc_;
+  std::string name_;
+  std::string desc_;
   pa_cvolume volume_;
   int volume_percent_;
   pa_channel_map channels_;
@@ -91,30 +87,30 @@ class Card {
  public:
   Card(const pa_card_info* info);
 
-  const string& Name() const { return name_; }
+  const std::string& Name() const { return name_; }
   uint32_t Index() const { return index_; }
-  const string& Driver() const { return driver_; }
+  const std::string& Driver() const { return driver_; }
 
-  const vector<Profile>& Profiles() const { return profiles_; }
+  const std::vector<Profile>& Profiles() const { return profiles_; }
   const Profile& ActiveProfile() const { return active_profile_; }
 
  private:
   friend class PulseClient;
 
   uint32_t index_;
-  string name_;
+  std::string name_;
   uint32_t owner_module_;
-  string driver_;
-  vector<Profile> profiles_;
+  std::string driver_;
+  std::vector<Profile> profiles_;
   Profile active_profile_;
 };
 
 struct ServerInfo {
-  string sink;
-  string source;
-  string empty = "";
+  std::string sink;
+  std::string source;
+  std::string empty = "";
 
-  const string& GetDefault(enum DeviceType type) {
+  const std::string& GetDefault(enum DeviceType type) {
     switch (type) {
     case DEVTYPE_SINK:
       return sink;
@@ -146,7 +142,7 @@ struct Range {
 
 class PulseClient {
  public:
-  PulseClient(string client_name);
+  PulseClient(std::string client_name);
   ~PulseClient();
 
   // Populates all known devices and cards. Any currently known
@@ -155,35 +151,35 @@ class PulseClient {
 
   // Get a device by index or name and type, or all devices by type.
   Device* GetDevice(const uint32_t index, enum DeviceType type);
-  Device* GetDevice(const string& name, enum DeviceType type);
-  const vector<Device>& GetDevices(enum DeviceType type) const;
+  Device* GetDevice(const std::string& name, enum DeviceType type);
+  const std::vector<Device>& GetDevices(enum DeviceType type) const;
 
   // Get a sink by index or name, or all sinks.
   Device* GetSink(const uint32_t index);
-  Device* GetSink(const string& name);
-  const vector<Device>& GetSinks() const { return sinks_; }
+  Device* GetSink(const std::string& name);
+  const std::vector<Device>& GetSinks() const { return sinks_; }
 
   // Get a source by index or name, or all sources.
   Device* GetSource(const uint32_t index);
-  Device* GetSource(const string& name);
-  const vector<Device>& GetSources() const { return sources_; }
+  Device* GetSource(const std::string& name);
+  const std::vector<Device>& GetSources() const { return sources_; }
 
   // Get a sink input by index or name, or all sink inputs.
   Device* GetSinkInput(const uint32_t name);
-  Device* GetSinkInput(const string& name);
-  const vector<Device>& GetSinkInputs() const { return sink_inputs_; }
+  Device* GetSinkInput(const std::string& name);
+  const std::vector<Device>& GetSinkInputs() const { return sink_inputs_; }
 
   // Get a source output by index or name, or all source outputs.
   Device* GetSourceOutput(const uint32_t name);
-  Device* GetSourceOutput(const string& name);
-  const vector<Device>& GetSourceOutputs() const { return source_outputs_; }
+  Device* GetSourceOutput(const std::string& name);
+  const std::vector<Device>& GetSourceOutputs() const { return source_outputs_; }
 
   // Get a card by index or name, all cards, or get the card which
   // a sink is attached to.
   Card* GetCard(const uint32_t index);
-  Card* GetCard(const string& name);
+  Card* GetCard(const std::string& name);
   Card* GetCard(const Device& device);
-  const vector<Card>& GetCards() const { return cards_; }
+  const std::vector<Card>& GetCards() const { return cards_; }
 
   // Get or set the volume of a device.
   int GetVolume(const Device& device) const;
@@ -210,7 +206,7 @@ class PulseClient {
   }
 
   // Set the profile for a card by name.
-  bool SetProfile(Card& card, const string& profile);
+  bool SetProfile(Card& card, const std::string& profile);
 
   // Move a given source output or sink input to the destination.
   bool Move(Device& source, Device& dest);
@@ -236,30 +232,30 @@ class PulseClient {
 
  private:
   void mainloop_iterate(pa_operation* op);
-  template<class T> T* find_fuzzy(vector<T>& haystack, const string& needle);
+  template<class T> T* find_fuzzy(std::vector<T>& haystack, const std::string& needle);
 
   void populate_server_info();
   void populate_cards();
   void populate_sinks();
   void populate_sources();
 
-  Device* get_device(vector<Device>& devices, const uint32_t index);
-  Device* get_device(vector<Device>& devices, const string& name);
+  Device* get_device(std::vector<Device>& devices, const uint32_t index);
+  Device* get_device(std::vector<Device>& devices, const std::string& name);
 
   void remove_device(Device& device);
 
-  string client_name_;
+  std::string client_name_;
   pa_context* context_;
   pa_mainloop* mainloop_;
-  vector<Device> sinks_;
-  vector<Device> sources_;
-  vector<Device> sink_inputs_;
-  vector<Device> source_outputs_;
-  vector<Card> cards_;
+  std::vector<Device> sinks_;
+  std::vector<Device> sources_;
+  std::vector<Device> sink_inputs_;
+  std::vector<Device> source_outputs_;
+  std::vector<Card> cards_;
   ServerInfo defaults_;
   Range<int> volume_range_;
   Range<int> balance_range_;
-  unique_ptr<Notifier> notifier_;
+  std::unique_ptr<Notifier> notifier_;
 };
 
 class unreachable : public std::runtime_error {

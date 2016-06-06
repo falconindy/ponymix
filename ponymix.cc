@@ -88,7 +88,7 @@ static const char* type_to_string(enum DeviceType t) {
 }
 
 static enum DeviceType string_to_devtype_or_die(const char* str) {
-  static std::map<string, enum DeviceType> typemap{
+  static std::map<std::string, enum DeviceType> typemap{
     { "sink",           DEVTYPE_SINK          },
     { "source",         DEVTYPE_SOURCE        },
     { "sink-input",     DEVTYPE_SINK_INPUT    },
@@ -102,7 +102,7 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
 }
 
 static Device* string_to_device_or_die(PulseClient& ponymix,
-                                       string arg,
+                                       std::string arg,
                                        enum DeviceType type) {
   Device* device = ponymix.GetDevice(arg, type);
   if (device == nullptr) errx(1, "no match found for device: %s", arg.c_str());
@@ -400,7 +400,7 @@ static int IsAvailable(PulseClient& ponymix, int, char*[]) {
   return ponymix.Availability(*device) == Device::AVAILABLE_YES;
 }
 
-static bool endswith(const string& subject, const string& predicate) {
+static bool endswith(const std::string& subject, const std::string& predicate) {
   if (subject.size() < predicate.size()) {
     return false;
   }
@@ -409,9 +409,9 @@ static bool endswith(const string& subject, const string& predicate) {
       predicate.size(), predicate) == 0;
 }
 
-static const std::pair<const string, const Command>& string_to_command(
+static const std::pair<const std::string, const Command>& string_to_command(
     const char* str) {
-  static std::map<string, const Command> actionmap{
+  static std::map<std::string, const Command> actionmap{
     // command name            function         arg min  arg max
     { "defaults",            { ShowDefaults,        { 0, 0 } } },
     { "list",                { List,                { 0, 0 } } },
@@ -460,7 +460,7 @@ static const std::pair<const string, const Command>& string_to_command(
     }
     if (iter != match) {
       auto i = match;
-      string cand = i->first;
+      std::string cand = i->first;
       i++;
       while (i->first.find(str) == 0) {
         cand += ", " + i->first;
@@ -558,7 +558,7 @@ static int CommandDispatch(PulseClient& ponymix, int argc, char *argv[]) {
     error_wrong_args(cmd.second, cmd.first.c_str());
   }
 
-  if (endswith(cmd.first, string("-short"))) {
+  if (endswith(cmd.first, std::string("-short"))) {
     opt_short = true;
   }
 

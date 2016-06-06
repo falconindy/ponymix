@@ -542,6 +542,7 @@ void PulseClient::remove_device(Device& device) {
   switch (device.type_) {
   case DEVTYPE_SINK:
     devlist = &sinks_;
+    break;
   case DEVTYPE_SINK_INPUT:
     devlist = &sink_inputs_;
     break;

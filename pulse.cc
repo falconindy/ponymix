@@ -177,45 +177,45 @@ Device* PulseClient::get_device(std::vector<Device>& devices, const std::string&
   }
 }
 
-Device* PulseClient::GetDevice(const uint32_t index, enum DeviceType type) {
+Device* PulseClient::GetDevice(const uint32_t index, DeviceType type) {
   switch (type) {
-  case DEVTYPE_SINK:
+  case DeviceType::SINK:
     return GetSink(index);
-  case DEVTYPE_SOURCE:
+  case DeviceType::SOURCE:
     return GetSource(index);
-  case DEVTYPE_SINK_INPUT:
+  case DeviceType::SINK_INPUT:
     return GetSinkInput(index);
-  case DEVTYPE_SOURCE_OUTPUT:
+  case DeviceType::SOURCE_OUTPUT:
     return GetSourceOutput(index);
   }
 
   throw unreachable();
 }
 
-Device* PulseClient::GetDevice(const std::string& name, enum DeviceType type) {
+Device* PulseClient::GetDevice(const std::string& name, DeviceType type) {
   switch (type) {
-  case DEVTYPE_SINK:
+  case DeviceType::SINK:
     return GetSink(name);
-  case DEVTYPE_SOURCE:
+  case DeviceType::SOURCE:
     return GetSource(name);
-  case DEVTYPE_SINK_INPUT:
+  case DeviceType::SINK_INPUT:
     return GetSinkInput(name);
-  case DEVTYPE_SOURCE_OUTPUT:
+  case DeviceType::SOURCE_OUTPUT:
     return GetSourceOutput(name);
   }
 
   throw unreachable();
 }
 
-const std::vector<Device>& PulseClient::GetDevices(enum DeviceType type) const {
+const std::vector<Device>& PulseClient::GetDevices(DeviceType type) const {
   switch (type) {
-  case DEVTYPE_SINK:
+  case DeviceType::SINK:
     return GetSinks();
-  case DEVTYPE_SOURCE:
+  case DeviceType::SOURCE:
     return GetSources();
-  case DEVTYPE_SINK_INPUT:
+  case DeviceType::SINK_INPUT:
     return GetSinkInputs();
-  case DEVTYPE_SOURCE_OUTPUT:
+  case DeviceType::SOURCE_OUTPUT:
     return GetSourceOutputs();
   }
 
@@ -355,7 +355,7 @@ bool PulseClient::SetMute(Device& device, bool mute) {
 
   if (success) {
     device.mute_ = mute;
-    notifier_->Notify(mute ? NOTIFY_MUTE : NOTIFY_UNMUTE,
+    notifier_->Notify(mute ? NotificationType::MUTE : NotificationType::UNMUTE,
                       device.volume_percent_, mute);
   }
 
@@ -382,7 +382,7 @@ bool PulseClient::SetVolume(Device& device, long volume) {
 
   if (success) {
     device.update_volume(*cvol);
-    notifier_->Notify(NOTIFY_VOLUME, device.volume_percent_, device.mute_);
+    notifier_->Notify(NotificationType::VOLUME, device.volume_percent_, device.mute_);
   }
 
   return success;
@@ -418,7 +418,7 @@ bool PulseClient::SetBalance(Device& device, long balance) {
 
   if (success) {
     device.update_volume(*cvol);
-    notifier_->Notify(NOTIFY_BALANCE, device.balance_, false);
+    notifier_->Notify(NotificationType::BALANCE, device.balance_, false);
   }
 
   return success;
@@ -520,15 +520,15 @@ bool PulseClient::SetDefault(Device& device) {
 
   if (success) {
     switch (device.type_) {
-    case DEVTYPE_SINK:
+    case DeviceType::SINK:
       defaults_.sink = device.name_;
       break;
-    case DEVTYPE_SOURCE:
+    case DeviceType::SOURCE:
       defaults_.source = device.name_;
       break;
     default:
       errx(1, "impossible to set a default for device type %d",
-           device.type_);
+           static_cast<int>(device.type_));
     }
   }
 
@@ -539,16 +539,16 @@ void PulseClient::remove_device(Device& device) {
   std::vector<Device>* devlist;
 
   switch (device.type_) {
-  case DEVTYPE_SINK:
+  case DeviceType::SINK:
     devlist = &sinks_;
     break;
-  case DEVTYPE_SINK_INPUT:
+  case DeviceType::SINK_INPUT:
     devlist = &sink_inputs_;
     break;
-  case DEVTYPE_SOURCE:
+  case DeviceType::SOURCE:
     devlist = &sources_;
     break;
-  case DEVTYPE_SOURCE_OUTPUT:
+  case DeviceType::SOURCE_OUTPUT:
     devlist = &source_outputs_;
     break;
   }
@@ -581,7 +581,7 @@ Card::Card(const pa_card_info* info) :
 // Devices
 //
 Device::Device(const pa_sink_info* info) :
-    type_(DEVTYPE_SINK),
+    type_(DeviceType::SINK),
     index_(info->index),
     name_(info->name ? info->name : ""),
     desc_(info->description),
@@ -600,20 +600,20 @@ Device::Device(const pa_sink_info* info) :
   if (info->active_port) {
     switch (info->active_port->available) {
       case PA_PORT_AVAILABLE_YES:
-        available_ = Device::AVAILABLE_YES;
+        available_ = Device::Availability::YES;
         break;
       case PA_PORT_AVAILABLE_NO:
-        available_ = Device::AVAILABLE_NO;
+        available_ = Device::Availability::NO;
         break;
       case PA_PORT_AVAILABLE_UNKNOWN:
-        available_ = Device::AVAILABLE_UNKNOWN;
+        available_ = Device::Availability::UNKNOWN;
         break;
     }
   }
 }
 
 Device::Device(const pa_source_info* info) :
-    type_(DEVTYPE_SOURCE),
+    type_(DeviceType::SOURCE),
     index_(info->index),
     name_(info->name ? info->name : ""),
     desc_(info->description),
@@ -631,7 +631,7 @@ Device::Device(const pa_source_info* info) :
 }
 
 Device::Device(const pa_sink_input_info* info) :
-    type_(DEVTYPE_SINK_INPUT),
+    type_(DeviceType::SINK_INPUT),
     index_(info->index),
     name_(info->name ? info->name : ""),
     mute_(info->mute),
@@ -652,7 +652,7 @@ Device::Device(const pa_sink_input_info* info) :
 }
 
 Device::Device(const pa_source_output_info* info) :
-    type_(DEVTYPE_SOURCE_OUTPUT),
+    type_(DeviceType::SOURCE_OUTPUT),
     index_(info->index),
     name_(info->name ? info->name : ""),
     mute_(info->mute),

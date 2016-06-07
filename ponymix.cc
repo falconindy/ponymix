@@ -50,7 +50,7 @@ struct Color {
   const char* mute;
 };
 
-static enum DeviceType opt_devtype;
+static DeviceType opt_devtype;
 static bool opt_listrestrict;
 static bool opt_short;
 static const char* opt_action;
@@ -72,27 +72,27 @@ static int xstrtol(const char *str, long *out) {
   return 0;
 }
 
-static const char* type_to_string(enum DeviceType t) {
+static const char* type_to_string(DeviceType t) {
   switch (t) {
-  case DEVTYPE_SINK:
+  case DeviceType::SINK:
     return "sink";
-  case DEVTYPE_SOURCE:
+  case DeviceType::SOURCE:
     return "source";
-  case DEVTYPE_SINK_INPUT:
+  case DeviceType::SINK_INPUT:
     return "sink-input";
-  case DEVTYPE_SOURCE_OUTPUT:
+  case DeviceType::SOURCE_OUTPUT:
     return "source-output";
   }
 
   throw unreachable();
 }
 
-static enum DeviceType string_to_devtype_or_die(const char* str) {
-  static std::map<std::string, enum DeviceType> typemap{
-    { "sink",           DEVTYPE_SINK          },
-    { "source",         DEVTYPE_SOURCE        },
-    { "sink-input",     DEVTYPE_SINK_INPUT    },
-    { "source-output",  DEVTYPE_SOURCE_OUTPUT },
+static DeviceType string_to_devtype_or_die(const char* str) {
+  static std::map<std::string, DeviceType> typemap{
+    { "sink",           DeviceType::SINK          },
+    { "source",         DeviceType::SOURCE        },
+    { "sink-input",     DeviceType::SINK_INPUT    },
+    { "source-output",  DeviceType::SOURCE_OUTPUT },
   };
   try {
     return typemap.at(str);
@@ -103,7 +103,7 @@ static enum DeviceType string_to_devtype_or_die(const char* str) {
 
 static Device* string_to_device_or_die(PulseClient& ponymix,
                                        std::string arg,
-                                       enum DeviceType type) {
+                                       DeviceType type) {
   Device* device = ponymix.GetDevice(arg, type);
   if (device == nullptr) errx(1, "no match found for device: %s", arg.c_str());
   return device;
@@ -357,17 +357,17 @@ static int SetProfile(PulseClient& ponymix, int, char* argv[]) {
 
 static int Move(PulseClient& ponymix, int, char* argv[]) {
   // this assignment is a lie. stfu g++
-  enum DeviceType target_devtype = opt_devtype;
+  DeviceType target_devtype = opt_devtype;
   switch (opt_devtype) {
-  case DEVTYPE_SOURCE:
-    opt_devtype = DEVTYPE_SOURCE_OUTPUT;
-  case DEVTYPE_SOURCE_OUTPUT:
-    target_devtype = DEVTYPE_SOURCE;
+  case DeviceType::SOURCE:
+    opt_devtype = DeviceType::SOURCE_OUTPUT;
+  case DeviceType::SOURCE_OUTPUT:
+    target_devtype = DeviceType::SOURCE;
     break;
-  case DEVTYPE_SINK:
-    opt_devtype = DEVTYPE_SINK_INPUT;
-  case DEVTYPE_SINK_INPUT:
-    target_devtype = DEVTYPE_SINK;
+  case DeviceType::SINK:
+    opt_devtype = DeviceType::SINK_INPUT;
+  case DeviceType::SINK_INPUT:
+    target_devtype = DeviceType::SINK;
     break;
   }
 
@@ -380,11 +380,11 @@ static int Move(PulseClient& ponymix, int, char* argv[]) {
 
 static int Kill(PulseClient& ponymix, int, char*[]) {
   switch (opt_devtype) {
-  case DEVTYPE_SOURCE:
-    opt_devtype = DEVTYPE_SOURCE_OUTPUT;
+  case DeviceType::SOURCE:
+    opt_devtype = DeviceType::SOURCE_OUTPUT;
     break;
-  case DEVTYPE_SINK:
-    opt_devtype = DEVTYPE_SINK_INPUT;
+  case DeviceType::SINK:
+    opt_devtype = DeviceType::SINK_INPUT;
     break;
   default:
     break;
@@ -397,7 +397,7 @@ static int Kill(PulseClient& ponymix, int, char*[]) {
 
 static int IsAvailable(PulseClient& ponymix, int, char*[]) {
   auto device = string_to_device_or_die(ponymix, opt_device, opt_devtype);
-  return ponymix.Availability(*device) == Device::AVAILABLE_YES;
+  return ponymix.Availability(*device) == Device::Availability::YES;
 }
 
 static bool endswith(const std::string& subject, const std::string& predicate) {
@@ -611,20 +611,20 @@ bool parse_options(int argc, char** argv) {
       break;
     case 0x100:
     case 0x101:
-      opt_devtype = DEVTYPE_SINK;
+      opt_devtype = DeviceType::SINK;
       opt_listrestrict = true;
       break;
     case 0x102:
     case 0x103:
-      opt_devtype = DEVTYPE_SOURCE;
+      opt_devtype = DeviceType::SOURCE;
       opt_listrestrict = true;
       break;
     case 0x104:
-      opt_devtype = DEVTYPE_SINK_INPUT;
+      opt_devtype = DeviceType::SINK_INPUT;
       opt_listrestrict = true;
       break;
     case 0x105:
-      opt_devtype = DEVTYPE_SOURCE_OUTPUT;
+      opt_devtype = DeviceType::SOURCE_OUTPUT;
       opt_listrestrict = true;
       break;
     case 0x106:
@@ -653,7 +653,7 @@ int main(int argc, char* argv[]) {
   // that on demand if a function needs it.
   ServerInfo defaults = ponymix.GetDefaults();
   opt_action = "defaults";
-  opt_devtype = DEVTYPE_SINK;
+  opt_devtype = DeviceType::SINK;
   opt_maxvolume = 100;
 
   if (!parse_options(argc, argv)) return 1;

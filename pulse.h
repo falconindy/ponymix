@@ -14,11 +14,11 @@
 // external
 #include <pulse/pulseaudio.h>
 
-enum DeviceType {
-  DEVTYPE_SINK,
-  DEVTYPE_SOURCE,
-  DEVTYPE_SINK_INPUT,
-  DEVTYPE_SOURCE_OUTPUT,
+enum class DeviceType {
+  SINK,
+  SOURCE,
+  SINK_INPUT,
+  SOURCE_OUTPUT,
 };
 
 struct Profile {
@@ -45,11 +45,11 @@ struct Operations {
 
 class Device {
  public:
-  typedef enum {
-    AVAILABLE_UNKNOWN = 0,
-    AVAILABLE_NO,
-    AVAILABLE_YES,
-  } Availability;
+  enum class Availability {
+    UNKNOWN = 0,
+    NO,
+    YES,
+  };
 
   Device(const pa_source_info* info);
   Device(const pa_sink_info* info);
@@ -62,14 +62,14 @@ class Device {
   int Volume() const { return volume_percent_; }
   int Balance() const { return balance_; }
   bool Muted() const { return mute_; }
-  enum DeviceType Type() const { return type_; }
+  DeviceType Type() const { return type_; }
 
  private:
   friend class PulseClient;
 
   void update_volume(const pa_cvolume& newvol);
 
-  enum DeviceType type_;
+  DeviceType type_;
   uint32_t index_;
   std::string name_;
   std::string desc_;
@@ -80,7 +80,7 @@ class Device {
   int balance_;
   uint32_t card_idx_;
   Operations ops_;
-  Device::Availability available_ = Device::AVAILABLE_UNKNOWN;
+  Device::Availability available_ = Availability::UNKNOWN;
 };
 
 class Card {
@@ -110,11 +110,11 @@ struct ServerInfo {
   std::string source;
   std::string empty = "";
 
-  const std::string& GetDefault(enum DeviceType type) {
+  const std::string& GetDefault(DeviceType type) {
     switch (type) {
-    case DEVTYPE_SINK:
+    case DeviceType::SINK:
       return sink;
-    case DEVTYPE_SOURCE:
+    case DeviceType::SOURCE:
       return source;
     default:
       return empty;
@@ -150,9 +150,9 @@ class PulseClient {
   void Populate();
 
   // Get a device by index or name and type, or all devices by type.
-  Device* GetDevice(const uint32_t index, enum DeviceType type);
-  Device* GetDevice(const std::string& name, enum DeviceType type);
-  const std::vector<Device>& GetDevices(enum DeviceType type) const;
+  Device* GetDevice(const uint32_t index, DeviceType type);
+  Device* GetDevice(const std::string& name, DeviceType type);
+  const std::vector<Device>& GetDevices(DeviceType type) const;
 
   // Get a sink by index or name, or all sinks.
   Device* GetSink(const uint32_t index);

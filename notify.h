@@ -6,18 +6,18 @@
 #include <libnotify/notify.h>
 #endif
 
-enum NotificationType {
-  NOTIFY_VOLUME,
-  NOTIFY_BALANCE,
-  NOTIFY_UNMUTE,
-  NOTIFY_MUTE,
+enum class NotificationType {
+  VOLUME,
+  BALANCE,
+  UNMUTE,
+  MUTE,
 };
 
 class Notifier {
  public:
   virtual ~Notifier() {}
 
-  virtual void Notify(enum NotificationType type, long value, bool mute) const = 0;
+  virtual void Notify(NotificationType type, long value, bool mute) const = 0;
 
  protected:
   bool initialized_;
@@ -35,10 +35,10 @@ class CommandLineNotifier : public Notifier {
 
   virtual void Notify(enum NotificationType type, long value, bool) const {
     switch (type) {
-    case NOTIFY_VOLUME:
-    case NOTIFY_BALANCE:
-    case NOTIFY_UNMUTE:
-    case NOTIFY_MUTE:
+    case NotificationType::VOLUME:
+    case NotificationType::BALANCE:
+    case NotificationType::UNMUTE:
+    case NotificationType::MUTE:
       printf("%ld\n", value);
       break;
     }
@@ -58,11 +58,11 @@ class LibnotifyNotifier : public Notifier {
 
   virtual void Notify(enum NotificationType type, long value, bool mute) const {
     switch (type) {
-    case NOTIFY_BALANCE:
+    case NotificationType::BALANCE:
       break;
-    case NOTIFY_VOLUME:
-    case NOTIFY_UNMUTE:
-    case NOTIFY_MUTE:
+    case NotificationType::VOLUME:
+    case NotificationType::UNMUTE:
+    case NotificationType::MUTE:
       volchange(value, mute);
       break;
     }

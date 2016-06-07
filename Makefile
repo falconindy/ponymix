@@ -1,4 +1,4 @@
-V=4
+V=5
 VDEVEL=$(shell test -d .git && git describe 2>/dev/null)
 
 ifneq "$(VDEVEL)" ""

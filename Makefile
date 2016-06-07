@@ -5,7 +5,7 @@ ifneq "$(VDEVEL)" ""
 V=$(VDEVEL)
 endif
 
-base_CXXFLAGS = -std=c++11 -Wall -Wextra -pedantic -O2 -g -DPONYMIX_VERSION=\"$(V)\"
+base_CXXFLAGS = -std=c++14 -Wall -Wextra -pedantic -O2 -g -DPONYMIX_VERSION=\"$(V)\"
 base_LIBS = -lm
 
 libpulse_CXXFLAGS = $(shell pkg-config --cflags libpulse)

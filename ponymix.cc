@@ -667,11 +667,11 @@ int main(int argc, char* argv[]) {
 
 #ifdef HAVE_NOTIFY
   if (opt_notify) {
-    ponymix.EnableNotifications(new LibnotifyNotifier);
+    ponymix.SetNotifier(std::make_unique<LibnotifyNotifier>());
   } else
 #endif
   {
-    ponymix.EnableNotifications(new CommandLineNotifier);
+    ponymix.SetNotifier(std::make_unique<CommandLineNotifier>());
   }
 
   return CommandDispatch(ponymix, argc, argv);

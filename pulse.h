@@ -228,10 +228,11 @@ class PulseClient {
     balance_range_ = { min, max };
   }
 
-  void EnableNotifications(Notifier* notifier);
+  void SetNotifier(std::unique_ptr<Notifier> notifier);
 
  private:
-  void mainloop_iterate(pa_operation* op);
+  void WaitOperationComplete(pa_operation* op);
+
   template<class T> T* find_fuzzy(std::vector<T>& haystack, const std::string& needle);
 
   void populate_server_info();

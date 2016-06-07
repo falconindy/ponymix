@@ -44,10 +44,7 @@ void card_info_cb(pa_context* context,
 }
 
 template<typename T>
-void device_info_cb(pa_context* context,
-                           const T* info,
-                           int eol,
-                           void* raw) {
+void device_info_cb(pa_context* context, const T* info, int eol, void* raw) {
   if (eol < 0) {
     fprintf(stderr, "%s error in %s: \n", __func__,
         pa_strerror(pa_context_errno(context)));
@@ -61,8 +58,7 @@ void device_info_cb(pa_context* context,
 }
 
 void server_info_cb(pa_context* context __attribute__((unused)),
-                           const pa_server_info* i,
-                           void* raw) {
+                    const pa_server_info* i, void* raw) {
   auto defaults = static_cast<ServerInfo*>(raw);
   defaults->sink = i->default_sink_name;
   defaults->source = i->default_source_name;
@@ -254,11 +250,13 @@ Device* PulseClient::GetSourceOutput(const std::string& name) {
   return get_device(source_outputs_, name);
 }
 
-void PulseClient::mainloop_iterate(pa_operation* op) {
+void PulseClient::WaitOperationComplete(pa_operation* op) {
   int r;
   while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
     pa_mainloop_iterate(mainloop_, 1, &r);
   }
+
+  pa_operation_unref(op);
 }
 
 template<class T>
@@ -283,58 +281,39 @@ T* PulseClient::find_fuzzy(std::vector<T>& haystack, const std::string& needle) 
 
 void PulseClient::populate_cards() {
   std::vector<Card> cards;
-  pa_operation* op = pa_context_get_card_info_list(context_,
-                                                   card_info_cb,
-                                                   static_cast<void*>(&cards));
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(pa_context_get_card_info_list(
+        context_, card_info_cb, static_cast<void*>(&cards)));
 
-  using std::swap;
-  swap(cards, cards_);
+  cards_ = std::move(cards);
 }
 
 void PulseClient::populate_server_info() {
-  pa_operation* op = pa_context_get_server_info(context_,
-                                                server_info_cb,
-                                                &defaults_);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(pa_context_get_server_info(
+        context_, server_info_cb, &defaults_));
 }
 
 void PulseClient::populate_sinks() {
   std::vector<Device> sinks;
-  pa_operation* op = pa_context_get_sink_info_list(
-      context_, device_info_cb, static_cast<void*>(&sinks));
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(pa_context_get_sink_info_list(
+      context_, device_info_cb, static_cast<void*>(&sinks)));
+  sinks_ = std::move(sinks);
 
   std::vector<Device> sink_inputs;
-  op = pa_context_get_sink_input_info_list(
-      context_, device_info_cb, static_cast<void*>(&sink_inputs));
-  mainloop_iterate(op);
-  pa_operation_unref(op);
-
-  using std::swap;
-  swap(sinks, sinks_);
-  swap(sink_inputs, sink_inputs_);
+  WaitOperationComplete(pa_context_get_sink_input_info_list(
+      context_, device_info_cb, static_cast<void*>(&sink_inputs)));
+  sink_inputs_ = std::move(sink_inputs);
 }
 
 void PulseClient::populate_sources() {
   std::vector<Device> sources;
-  pa_operation* op = pa_context_get_source_info_list(
-      context_, device_info_cb, static_cast<void*>(&sources));
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(pa_context_get_source_info_list(
+      context_, device_info_cb, static_cast<void*>(&sources)));
+  sources_ = std::move(sources);
 
   std::vector<Device> source_outputs;
-  op = pa_context_get_source_output_info_list(
-      context_, device_info_cb, static_cast<void*>(&source_outputs));
-  mainloop_iterate(op);
-  pa_operation_unref(op);
-
-  using std::swap;
-  swap(sources, sources_);
-  swap(source_outputs, source_outputs_);
+  WaitOperationComplete(pa_context_get_source_output_info_list(
+      context_, device_info_cb, static_cast<void*>(&source_outputs)));
+  source_outputs_ = std::move(source_outputs);
 }
 
 bool PulseClient::SetMute(Device& device, bool mute) {
@@ -345,13 +324,8 @@ bool PulseClient::SetMute(Device& device, bool mute) {
     return false;
   }
 
-  pa_operation* op = device.ops_.Mute(context_,
-                                      device.index_,
-                                      mute,
-                                      success_cb,
-                                      &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(device.ops_.Mute(
+          context_, device.index_, mute, success_cb, &success));
 
   if (success) {
     device.mute_ = mute;
@@ -372,13 +346,8 @@ bool PulseClient::SetVolume(Device& device, long volume) {
 
   volume = volume_range_.Clamp(volume);
   const pa_cvolume *cvol = value_to_cvol(volume, &device.volume_);
-  pa_operation* op = device.ops_.SetVolume(context_,
-                                           device.index_,
-                                           cvol,
-                                           success_cb,
-                                           &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(device.ops_.SetVolume(
+          context_, device.index_, cvol, success_cb, &success));
 
   if (success) {
     device.update_volume(*cvol);
@@ -397,8 +366,6 @@ bool PulseClient::DecreaseVolume(Device& device, long increment) {
 }
 
 bool PulseClient::SetBalance(Device& device, long balance) {
-  int success;
-
   if (device.ops_.SetVolume == nullptr) {
     warnx("device does not support setting balance.");
     return false;
@@ -408,13 +375,10 @@ bool PulseClient::SetBalance(Device& device, long balance) {
   pa_cvolume *cvol = pa_cvolume_set_balance(&device.volume_,
                                             &device.channels_,
                                             balance / 100.0);
-  pa_operation* op = device.ops_.SetVolume(context_,
-                                           device.index_,
-                                           cvol,
-                                           success_cb,
-                                           &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+
+  int success;
+  WaitOperationComplete(device.ops_.SetVolume(
+          context_, device.index_, cvol, success_cb, &success));
 
   if (success) {
     device.update_volume(*cvol);
@@ -442,14 +406,8 @@ int PulseClient::GetBalance(const Device& device) const {
 
 bool PulseClient::SetProfile(Card& card, const std::string& profile) {
   int success;
-  pa_operation* op =
-    pa_context_set_card_profile_by_index(context_,
-                                         card.index_,
-                                         profile.c_str(),
-                                         success_cb,
-                                         &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(pa_context_set_card_profile_by_index(
+          context_, card.index_, profile.c_str(), success_cb, &success));
 
   if (success) {
     // Update the profile
@@ -465,38 +423,27 @@ bool PulseClient::SetProfile(Card& card, const std::string& profile) {
 }
 
 bool PulseClient::Move(Device& source, Device& dest) {
-  int success;
-
   if (source.ops_.Move == nullptr) {
     warnx("source device does not support moving.");
     return false;
   }
 
-  pa_operation* op = source.ops_.Move(context_,
-                                      source.index_,
-                                      dest.index_,
-                                      success_cb,
-                                      &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  int success;
+  WaitOperationComplete(source.ops_.Move(
+          context_, source.index_, dest.index_, success_cb, &success));
 
   return success;
 }
 
 bool PulseClient::Kill(Device& device) {
-  int success;
-
   if (device.ops_.Kill == nullptr) {
     warnx("source device does not support being killed.");
     return false;
   }
 
-  pa_operation* op = device.ops_.Kill(context_,
-                                      device.index_,
-                                      success_cb,
-                                      &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  int success;
+  WaitOperationComplete(device.ops_.Kill(
+          context_, device.index_, success_cb, &success));
 
   if (success) remove_device(device);
 
@@ -511,12 +458,8 @@ bool PulseClient::SetDefault(Device& device) {
     return false;
   }
 
-  pa_operation* op = device.ops_.SetDefault(context_,
-                                            device.name_.c_str(),
-                                            success_cb,
-                                            &success);
-  mainloop_iterate(op);
-  pa_operation_unref(op);
+  WaitOperationComplete(device.ops_.SetDefault(
+          context_, device.name_.c_str(), success_cb, &success));
 
   if (success) {
     switch (device.type_) {
@@ -536,7 +479,7 @@ bool PulseClient::SetDefault(Device& device) {
 }
 
 void PulseClient::remove_device(Device& device) {
-  std::vector<Device>* devlist;
+  std::vector<Device>* devlist = nullptr;
 
   switch (device.type_) {
   case DeviceType::SINK:
@@ -555,12 +498,12 @@ void PulseClient::remove_device(Device& device) {
   devlist->erase(
       std::remove_if(
         devlist->begin(), devlist->end(),
-        [&device](Device& d) { return d.index_ == device.index_; }),
+        [&device](const Device& d) { return d.index_ == device.index_; }),
       devlist->end());
 }
 
-void PulseClient::EnableNotifications(Notifier* notifier) {
-  notifier_.reset(notifier);
+void PulseClient::SetNotifier(std::unique_ptr<Notifier> notifier) {
+  notifier_ = std::move(notifier);
 }
 
 //
@@ -588,7 +531,7 @@ Device::Device(const pa_sink_info* info) :
     mute_(info->mute),
     card_idx_(info->card) {
   update_volume(info->volume);
-  memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
+  channels_ = info->channel_map;
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
 
   ops_.SetVolume = pa_context_set_sink_volume_by_index;
@@ -620,7 +563,7 @@ Device::Device(const pa_source_info* info) :
     mute_(info->mute),
     card_idx_(info->card) {
   update_volume(info->volume);
-  memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
+  channels_ = info->channel_map;
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
 
   ops_.SetVolume = pa_context_set_source_volume_by_index;
@@ -637,7 +580,7 @@ Device::Device(const pa_sink_input_info* info) :
     mute_(info->mute),
     card_idx_(-1) {
   update_volume(info->volume);
-  memcpy(&channels_, &info->channel_map, sizeof(pa_channel_map));
+  channels_ = info->channel_map;
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
 
   const char *desc = pa_proplist_gets(info->proplist,
@@ -673,7 +616,7 @@ Device::Device(const pa_source_output_info* info) :
 }
 
 void Device::update_volume(const pa_cvolume& newvol) {
-  memcpy(&volume_, &newvol, sizeof(pa_cvolume));
+  volume_ = newvol;
   volume_percent_ = volume_as_percent(&volume_);
   balance_ = pa_cvolume_get_balance(&volume_, &channels_) * 100.0;
 }

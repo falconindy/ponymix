@@ -15,7 +15,7 @@ flags = [
 '-DUSE_CLANG_COMPLETER',
 '-D_HAVE_NOTIFY',
 '-DPONYMIX_VERSION="1"',
-'-std=c++11',
+'-std=c++14',
 '-x',
 'c++',
 '-I/usr/include/glib-2.0',

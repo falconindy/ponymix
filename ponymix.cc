@@ -571,7 +571,7 @@ bool parse_options(int argc, char** argv) {
     { "device",         required_argument, 0, 'd' },
     { "help",           no_argument,       0, 'h' },
     { "notify",         no_argument,       0, 'N' },
-    { "type",           required_argument, 0, 't' },
+    { "devtype",       required_argument, 0, 't' },
     { "version",        no_argument,       0, 'V' },
     { "sink",           no_argument,       0, 0x100 },
     { "output",         no_argument,       0, 0x101 },

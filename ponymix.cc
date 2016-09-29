@@ -490,7 +490,7 @@ static void usage() {
 
         " -c, --card CARD         target card (index or name)\n"
         " -d, --device DEVICE     target device (index or name)\n"
-        " -t, --type TYPE         device type\n"
+        " -t, --devtype TYPE      device type\n"
         " -N, --notify            use libnotify to announce volume changes\n"
         "     --max-volume VALUE  use VALUE as max volume\n"
         "     --short             output brief (parseable) lists\n"

@@ -45,4 +45,4 @@ dist:
 
 upload: all dist
 	gpg --detach-sign ponymix-$(V).tar.xz
-	scp ponymix-$(V).tar.xz ponymix-$(V).tar.xz.sig code.falconindy.com:archive/ponymix/
+	scp ponymix-$(V).tar.xz ponymix-$(V).tar.xz.sig pkgbuild.com:public_html/sources/ponymix/

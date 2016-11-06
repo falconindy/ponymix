@@ -2,4 +2,4 @@
 
 Ponymix is a command line mixer for PulseAudio.
 
-![pinkiepie](http://code.falconindy.com/images/ponymix.png)
+![pinkiepie](https://github.com/falconindy/ponymix/blob/master/ponymix.png)

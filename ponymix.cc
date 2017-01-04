@@ -444,6 +444,10 @@ static const std::pair<const std::string, const Command>& string_to_command(
     errx(1, "error: Invalid action specified: %s", str);
   }
 
+  if (match == actionmap.end()) {
+    errx(1, "error: Invalid action specified: %s", str);
+  }
+
   // Check for exact match
   if (match->first == str) {
     return *match;

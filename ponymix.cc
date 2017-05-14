@@ -1,4 +1,5 @@
 #include "pulse.h"
+#include "unique_polyfill.h"
 
 #include <err.h>
 #include <getopt.h>

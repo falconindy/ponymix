@@ -96,7 +96,7 @@ static DeviceType string_to_devtype_or_die(const char* str) {
   };
   try {
     return typemap.at(str);
-  } catch(std::out_of_range) {
+  } catch(std::out_of_range&) {
     errx(1, "error: Invalid device type specified: %s", str);
   }
 }
@@ -253,7 +253,7 @@ static int SetVolume(PulseClient& ponymix, int, char* argv[]) {
   long volume;
   try {
     volume = std::stol(argv[0]);
-  } catch (std::invalid_argument) {
+  } catch (std::invalid_argument&) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -272,7 +272,7 @@ static int SetBalance(PulseClient& ponymix, int, char* argv[]) {
   long balance;
   try {
     balance = std::stol(argv[0]);
-  } catch (std::invalid_argument) {
+  } catch (std::invalid_argument&) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -285,7 +285,7 @@ static int AdjBalance(PulseClient& ponymix, int, char* argv[]) {
   long balance;
   try {
     balance = std::stol(argv[0]);
-  } catch (std::invalid_argument) {
+  } catch (std::invalid_argument&) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 
@@ -300,7 +300,7 @@ static int adj_volume(PulseClient& ponymix,
   long delta;
   try {
     delta = std::stol(argv[0]);
-  } catch (std::invalid_argument) {
+  } catch (std::invalid_argument&) {
     errx(1, "error: failed to convert string to integer: %s", argv[0]);
   }
 

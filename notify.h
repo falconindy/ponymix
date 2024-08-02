@@ -83,6 +83,14 @@ class LibnotifyNotifier : public Notifier {
     }
 
     NotifyNotification* notification = notify_notification_new("ponymix", "", icon);
+
+    // Ensure every notification has the same ID such that it overwrites the
+    // previous notification.
+    GValue id = G_VALUE_INIT;
+    g_value_init(&id, G_TYPE_INT);
+    g_value_set_int(&id, 42);
+    g_object_set_property(G_OBJECT(notification), "id", &id);
+
     notify_notification_set_timeout(notification, 1000);
     notify_notification_set_urgency(notification, NOTIFY_URGENCY_NORMAL);
     notify_notification_set_hint_int32(notification, "value", vol);
